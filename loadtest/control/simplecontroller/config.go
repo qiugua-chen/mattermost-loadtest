@@ -1,3 +1,6 @@
+// Copyright (c) 2019-present Mattermost, Inc. All Rights Reserved.
+// See License.txt for license information.
+
 package simplecontroller
 
 import (
@@ -54,4 +57,8 @@ func ReadConfig(configFilePath string) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c *Config) IsValid() error {
+	return nil
 }
