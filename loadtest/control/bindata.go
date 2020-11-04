@@ -315,11 +315,11 @@ type bintree struct {
 }
 
 var _bintree = &bintree{nil, map[string]*bintree{
-	"test_profile.png": &bintree{test_profilePng, map[string]*bintree{}},
-	"test_text.txt":    &bintree{test_textTxt, map[string]*bintree{}},
-	"test_upload.jpg":  &bintree{test_uploadJpg, map[string]*bintree{}},
-	"test_upload.mp4":  &bintree{test_uploadMp4, map[string]*bintree{}},
-	"test_upload.png":  &bintree{test_uploadPng, map[string]*bintree{}},
+	"test_profile.png": {test_profilePng, map[string]*bintree{}},
+	"test_text.txt": {test_textTxt, map[string]*bintree{}},
+	"test_upload.jpg": {test_uploadJpg, map[string]*bintree{}},
+	"test_upload.mp4": {test_uploadMp4, map[string]*bintree{}},
+	"test_upload.png": {test_uploadPng, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory.
