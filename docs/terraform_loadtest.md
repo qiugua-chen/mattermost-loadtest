@@ -1,192 +1,189 @@
-# Running a load-test with a Terraform deployment
+# 使用 Terraform 部署运行负载测试
 
-This guide describes how to setup and run a load-test using a [Terraform](https://www.terraform.io/intro/index.html) deployment.
-Following this process it is possible to create a complete [load-test system](loadtest_system.md) in a mostly automated form.
-This is the recommended way to load-test a Mattermost instance for production.
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/terraform_loadtest.md
 
-## Prerequisites
+本文介绍如何用 [Terraform](https://www.terraform.io/intro/index.html) 部署来搭建并运行负载测试。
+按此流程可以基本自动化地创建一套完整的[负载测试系统](loadtest_system.md)，
+这是对生产形态 Mattermost 实例做压测的推荐方式。
 
-- [Terraform](https://learn.hashicorp.com/terraform/getting-started/install). Version 1.3.3 or greater (as long as it's in the v1.x series) is required.
-- AWS credentials to be used as described [here](https://www.terraform.io/docs/providers/aws/index.html#authentication-and-configuration). If you're a Mattermost staff member, please use [AWS Single Sign-On](https://aws.amazon.com/blogs/security/aws-single-sign-on-now-enables-command-line-interface-access-for-aws-accounts-using-corporate-credentials/) to generate API credentials for the [AWS credentials file](https://www.terraform.io/docs/providers/aws/index.html#shared-credentials-file). Credentials generated for mattermost-loadtest will remain active for 12 hours, at which point you will need to generate new credentials using the Single Sign-On portal. If you save the profile in the credentials file, make sure to use the name `mm-loadtest`.
-- A valid Mattermost Enterprise license, required to run the load-test through the [`coordinator`](coordinator.md). If you're a Mattermost staff member, you can get a test license in the [~Team: Self-Serve](https://community.mattermost.com/private-core/channels/team-self-serve) channel.
+## 前置条件
 
-### Clone the repository
+- [Terraform](https://learn.hashicorp.com/terraform/getting-started/install)：要求 1.3.3 或更高版本（v1.x 系列即可）。
+- AWS 凭据，配置方式见[这里](https://www.terraform.io/docs/providers/aws/index.html#authentication-and-configuration)。Mattermost 内部员工请使用 [AWS Single Sign-On](https://aws.amazon.com/blogs/security/aws-single-sign-on-now-enables-command-line-interface-access-for-aws-accounts-using-corporate-credentials/) 为 [AWS credentials 文件](https://www.terraform.io/docs/providers/aws/index.html#shared-credentials-file)生成 API 凭据（凭据 12 小时后过期需重新生成；若保存为 profile，名称须用 `mm-loadtest`）。
+- 有效的 Mattermost Enterprise license（通过 [`coordinator`](coordinator.md) 运行压测所需）。Mattermost 内部员工可在 [~Team: Self-Serve](https://community.mattermost.com/private-core/channels/team-self-serve) 频道获取测试 license。
+
+### 克隆仓库
 
 ```sh
 git clone https://github.com/mattermost/mattermost-load-test-ng
 ```
 
-### Enter the source directory
+### 进入源码目录
 
 ```sh
 cd mattermost-load-test-ng
 ```
 
-### Copy and modify the required configuration
+### 复制并修改所需配置
 
-In order to start the deployment process, it is required to configure the deployer appropriately.
+开始部署前需要先配置 deployer：
 
 ```sh
 cp config/deployer.sample.json config/deployer.json
 ```
 
-Detailed documentation for the deployer's config can be found [here](config/deployer.md). At least, make sure to set the `SSHPublicKey` to the path of your public key, `MattermostLicenseFile` to the path of an enterprise license, and the `ClusterName` to a unique value within your AWS account. 
+deployer 配置的详细文档见[这里](config/deployer.md)。至少要设置：`SSHPublicKey` 为你的公钥路径、`MattermostLicenseFile` 为企业 license 路径、`ClusterName` 为你的 AWS 账号内的唯一值。
 
-## Deployment
+## 部署（Deployment）
 
-### Setup ssh-agent
+### 配置 ssh-agent
 
-For the deployer to work, an [ssh-agent](https://linux.die.net/man/1/ssh-agent) needs to be running and loaded with a private key.
+deployer 工作需要 [ssh-agent](https://linux.die.net/man/1/ssh-agent) 已运行并加载私钥：
 
 ```sh
 eval $(ssh-agent -s)
 ssh-add PATH_TO_PRIVATE_KEY
 ```
 
-`PATH_TO_PRIVATE_KEY` should be replaced with the path to the matching private key for `SSHPublicKey`, as previously [configured](config/deployer.md).
+`PATH_TO_PRIVATE_KEY` 替换为与 `SSHPublicKey` 配对的私钥路径（见 [deployer 配置](config/deployer.md)）。
 
-### Create a new deployment
+### 创建新部署
 
 ```sh
 go run ./cmd/ltctl deployment create
 ```
 
-This command can take several minutes to complete when creating a [full](loadtest_system.md) deployment. By default, the console will keep logging info messages. If it does not, then something's wrong.
+创建[完整](loadtest_system.md)部署可能需要几分钟。默认情况下控制台会持续输出 info 日志；如果没有输出，说明出问题了。
 
-Once done, it will output information about the entire cluster. Everything will be now ready to start a new load-test.
+完成后会输出整个集群的信息，此后即可开始新的负载测试。
 
-If you see an error when running `deployment create` mentioning a "resource already exists", it is most likely because your `ClusterName` is not a unique value within your AWS account. Run `go run ./cmd/ltctl deployment destroy` to clean up the half created deployment. Then change the `ClusterName` to something more unique for your loadtest and try again.
+如果 `deployment create` 报 "resource already exists" 类错误，多半是 `ClusterName` 在你的 AWS 账号内不唯一。执行 `go run ./cmd/ltctl deployment destroy` 清理建了一半的部署，把 `ClusterName` 改得更唯一后重试。
 
-NOTE: If you are not a Mattermost staff, then most likely you would want to set the `--service_environment` flag to `production` so that the right license type is picked up. Internally, we use test licenses.
+注：非 Mattermost 员工一般需要设置 `--service_environment` 参数为 `production`，以便选用正确的 license 类型（官方内部使用测试 license）。
 
-### Get information on the current deployment
+### 查看当前部署信息
 
 ```sh
 go run ./cmd/ltctl deployment info
 ```
 
-This will show information about the current deployment.
-
-### Synchronize the current deployment
+### 同步当前部署
 
 ```sh
 go run ./cmd/ltctl deployment sync
 ```
 
-This command will synchronize any changes made manually to the AWS cluster.
+该命令会同步对 AWS 集群所做的手动变更。
 
-### Optionally configure coordinator and load-test
+### 可选：配置 coordinator 与 load-test
 
-When starting a load-test with the `ltctl` command, required configuration files are automatically uploaded to the instance hosting the [coordinator](coordinator.md).
-If no files are found, defaults will be used.
+用 `ltctl` 启动负载测试时，所需配置文件会自动上传到 [coordinator](coordinator.md) 所在实例；
+找不到文件则使用默认值。
 
-#### Copy default config
+#### 复制默认配置
 
-To configure the [coordinator](coordinator.md), `config/coordinator.json` should be created and/or edited.
+配置 [coordinator](coordinator.md)：创建/编辑 `config/coordinator.json`。
 
 ```sh
 cp config/coordinator.sample.json config/coordinator.json
 ```
 
-Its documentation can be found [here](config/coordinator.md).
+配置文档见[这里](config/coordinator.md)。
 
-#### Copy default config
+#### 复制默认配置
 
-To configure the load-test, `config/config.json` should be created and/or edited.
+配置 load-test：创建/编辑 `config/config.json`。
 
 ```sh
 cp config/config.sample.json config/config.json
 ```
 
-Its documentation can be found [here](config/config.md).
+配置文档见[这里](config/config.md)。
 
-## Run the test
+## 运行测试
 
-### Start a load-test
+### 启动负载测试
 
 ```sh
 go run ./cmd/ltctl loadtest start
 ```
 
-This will begin to run the load-test across the whole cluster of load-test agents.
+在整个 load-test agent 集群上开始压测。
 
-NOTE: If you are not a Mattermost staff, then most likely you would want to set the `--service_environment` flag to `production` so that the right license type is picked up. Internally, we use test licenses.
+注：非 Mattermost 员工一般需要设置 `--service_environment` 参数为 `production`。
 
-### Show the load-test status
+### 查看负载测试状态
 
 ```sh
 go run ./cmd/ltctl loadtest status
 ```
 
-This will print information about the status of the current load-test.
-
-### Stop the running load-test
+### 停止运行中的负载测试
 
 ```sh
 go run ./cmd/ltctl loadtest stop
 ```
 
-This will stop the currently running load-test.
+### 重新初始化负载测试
 
-### Re-initialize a load-test
-    
 ```sh
 go run ./cmd/ltctl loadtest reset
 ```
 
-This will completely erase data on the target instance's database and will run again the init process.
+该命令会清空目标实例数据库的全部数据，并重新执行 init 初始化过程。
 
-## Destroy the current deployment
+## 销毁当前部署
 
-When done with a deployment, it's suggested to run:
+部署用完后建议执行：
 
 ```sh
 go run ./cmd/ltctl deployment destroy
 ```
 
-This will permanently destroy all resources for the current deployment.
+永久销毁当前部署的全部资源。
 
-## Comparing results
+## 结果对比
 
-To compare the results of your load tests, see [here](compare.md).
+对比多轮负载测试的结果，参见[这里](compare.md)。
 
-## Debugging
+## 调试
 
-### SSH access to the terraformed hosts
+### SSH 访问 terraform 创建的主机
 
-* To get the list of terraformed hosts:
+* 列出全部主机：
   ```sh
   go run ./cmd/ltctl ssh  
   ```
-* To access a specific host via SSH, run:
+* SSH 到指定主机：
   ```sh
   go run ./cmd/ltctl ssh <instance-name>
   ```
 
-* Following are some common targets:
-  * `coordinator` — connects to the first agent, which also acts as the load test coordinator
-  * `proxy` — connects to the instance running Nginx
-  * `metrics`, `prometheus`, or `grafana` — connects to the instance running all metrics-related services
-  * `browser-agent` — connects to the instance running the browser agent
+* 常用目标：
+  * `coordinator` —— 第一台 agent，同时充当压测 coordinator
+  * `proxy` —— 运行 Nginx 的实例
+  * `metrics`、`prometheus`、`grafana` —— 运行全部指标相关服务的实例
+  * `browser-agent` —— 运行浏览器 agent 的实例
 
-### Database access
+### 数据库访问
 
-* To list all database cluster instances with their roles:
+* 列出全部数据库实例及其角色：
   ```sh
   go run ./cmd/ltctl db
   ```
-  This will output each instance with its role (`writer` or `reader-N`), endpoint, and identifier.
+  输出每个实例的角色（`writer` 或 `reader-N`）、endpoint 和标识符。
 
-* To connect to a database instance via an interactive `psql` session:
+* 通过交互式 `psql` 会话连接数据库：
   ```sh
   go run ./cmd/ltctl db connect
   ```
-  This establishes an SSH tunnel through a jump host (app server or metrics server) and opens `psql`. By default, it connects to the first reader instance, falling back to the writer if only one instance exists.
+  该命令通过跳板机（app server 或 metrics server）建立 SSH 隧道并打开 `psql`。默认连接第一个 reader 实例；只有一个实例时回退到 writer。
 
-* To connect to a specific instance:
+* 连接指定实例：
   ```sh
   go run ./cmd/ltctl db connect writer
   go run ./cmd/ltctl db connect reader-0
   ```
 
-  **Note:** Only `aurora-postgresql` is supported. `psql` must be installed locally.
+  **注**：仅支持 `aurora-postgresql`，且本机需已安装 `psql`。
