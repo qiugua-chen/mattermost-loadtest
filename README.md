@@ -16,6 +16,23 @@
 - **改造清单**：逐文件说明见 [docs/EXT-CHANGES.md](docs/EXT-CHANGES.md)
 - **复用指南**：不同被测系统下的迁移方法见 [docs/REUSE.md](docs/REUSE.md)
 
+## 文档导航
+
+**使用路径**（按阅读顺序）：
+
+| 文档 | 内容 | 什么时候读 |
+|---|---|---|
+| [docs/DESIGN.md](docs/DESIGN.md) | 改造设计动机：上游工具的 6 个痛点与本扩展的解法 | 想理解"为什么有这个 fork" |
+| [docs/SCENARIOS.md](docs/SCENARIOS.md) | 四类核心场景（登录/单聊/GM/频道大群）执行手册 | 正式执行压测前 |
+| [docs/METRICS.md](docs/METRICS.md) | 指标口径：五层指标、主结论边界、报告输出模板 | 看结果、写报告前 |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 问题排查：9+ 个典型故障模式、排查顺序、命令集 | 压测报错时 |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | 运行手册：结果文件字典、标准流程、交接注意事项 | 日常执行与交接 |
+| [monitoring/README.md](monitoring/README.md) | 三层监控模型与 nginx 链路采集启用方法 | 需要 HTTP 全链路证据时 |
+
+**扩展版专题**：[EXT-CHANGES.md](docs/EXT-CHANGES.md)（逐文件改造清单）、[REUSE.md](docs/REUSE.md)（跨环境/跨产品复用决策表）
+
+**上游文档**（中文译版）：[docs/readme.md](docs/readme.md) 为索引入口；核心篇目含 [本地运行](docs/local_loadtest.md)、[Controller 体系](docs/controllers.md)、[配置说明](docs/config/config.md)、[FAQ](docs/faq.md)
+
 ## 改造亮点
 
 | 能力 | 说明 | 关键文件 |
