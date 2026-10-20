@@ -1,52 +1,54 @@
-# Comparing load test results
+# 负载测试结果对比
 
-## Prerequisites
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/compare.md
 
-Test reports contain two types of data:
-- API and store times averaged over the duration of the whole test.
-- Granular data of user-specified queries, configured through [the Report subsection in `deployer.json`](config/deployer.md#report).
+## 前置条件
 
-All those data points are retrieved from Prometheus at the moment of generating the report, but the Prometheus service should have been scraping the metrics *during the test*. Terraform deployments automatically provide a metrics instance with a Prometheus service running, but locally, things may be different:
-- If you're running a dev environment locally through the docker-compose file in the `mattermost` repository (i.e., using `make run` or `make run-server`), a Prometheus server should be already up and running at `localhost:9090`.
-- If you're running Mattermost locally using any other method, you may need to [manually install and run a Prometheus server](https://prometheus.io/docs/introduction/first_steps/). Make sure to configure it to scrape both your local Mattermost metrics (usually at `localhost:8067`) and [the node exporter](https://prometheus.io/docs/guides/node-exporter/#monitoring-linux-host-metrics-with-the-node-exporter) (usually at `localhost:9100`).
+测试报告包含两类数据：
+- 整个测试期间取平均的 API 与 store（存储层）耗时。
+- 用户自定义查询的细粒度数据，通过 [`deployer.json` 中的 Report 配置段](config/deployer.md#report)定义。
 
-## Generating reports
+这些数据点在**生成报告的时刻**从 Prometheus 取回，但 Prometheus 必须在**测试运行期间**就已在抓取指标。Terraform 部署会自动提供运行着 Prometheus 的 metrics 实例；本地部署则视情况而定：
+- 如果你用 `mattermost` 仓库中的 docker-compose 起本地开发环境（即 `make run` 或 `make run-server`），`localhost:9090` 上应已有 Prometheus 在运行。
+- 如果你用其他方式在本地运行 Mattermost，可能需要[手动安装并运行 Prometheus](https://prometheus.io/docs/introduction/first_steps/)。确保配置了抓取本地 Mattermost 指标（通常在 `localhost:8067`）和 [node exporter](https://prometheus.io/docs/guides/node-exporter/#monitoring-linux-host-metrics-with-the-node-exporter)（通常在 `localhost:9100`）。
 
-After a load test is complete, a report can be generated and saved to a file which can be used to compare different load test runs. This can be done using
+## 生成报告
+
+负载测试完成后，可以生成报告并存为文件，用于不同轮次之间的对比：
 
 ```sh
 go run ./cmd/ltctl report generate --output=base.out --label=base "2020-06-23 07:23:35" "2020-06-23 07:33:35"
 ```
 
-Note that in the case of a local deployment, you'll need to set the `--prometheus-url ` flag to the URL of the Prometheus server containing your metrics: usually `http://localhost:9090`. If the flag is not set, the tool will assume a Terraform deployment is up and will try to connect to its Prometheus.
+注意：本地部署时需要设置 `--prometheus-url` 参数指向存有指标的 Prometheus 服务（通常是 `http://localhost:9090`）。若不设置，工具会假定存在 Terraform 部署并尝试连接其 Prometheus。
 
-The timestamps _must_ be in UTC, and they indicate the range within which the data is to be collected for the test. It is recommended to keep the timestamps within a range during which the loadtest is running a stable number of users, and not in a ramp-up phase or an unstable state of adding/removing users. This is to get consistent results between different runs.
+时间戳**必须**使用 UTC，表示报告取数的时间范围。建议把范围框在压测用户数稳定的区间内，避开爬坡阶段或增删用户的不稳定阶段，以保证不同轮次结果的一致性。
 
-The timestamp ranges for different load tests can be different. They will be compared with the base report. If a report has more data points than the base report, the extra ones will be ignored.
+不同压测轮次的时间范围可以不同，对比时以基准（base）报告为准：若某报告的数据点多于基准，多余部分会被忽略。
 
-There is no compression of timestamp ranges to normalize them. That is left to Prometheus queries. Data points are just plotted serially on a graph and compared.
+工具不会对时间范围做归一化压缩——这交给 Prometheus 查询处理；数据点只是按序绘制在图表上进行对比。
 
-## Comparing reports
+## 对比报告
 
-To compare two load test reports, run:
+对比两份负载测试报告：
 
 ```sh
 go run ./cmd/ltctl report compare base.out new.out --output=results.txt --graph
 ```
 
-The results.txt will be a Markdown formatted table comparing the average and p99 times of the store and API metrics. Additionally, a `--graph` parameter can also be passed which can be used to generate graphs comparing different metrics like CPU, Memory etc. This also requires the `gnuplot` command to be installed on the system for it to plot graphs.
+`results.txt` 是 Markdown 格式的表格，对比 store 与 API 指标的平均值和 P99 耗时。附加的 `--graph` 参数可生成 CPU、内存等指标的对比图（需要系统已安装 `gnuplot`）。
 
-#### Note
+#### 说明
 
-The Markdown output contains an initial section with a sorted summary of worsened/improved calls. This list does automatically exclude calls with (absolute) delta values smaller than 2ms and (absolute) delta percentage values smaller than 1%.
+Markdown 输出开头是"劣化/改善调用"的排序摘要。该清单自动剔除差值（绝对值）小于 2ms 且差异百分比（绝对值）小于 1% 的调用。
 
-## Best practices while comparing load-tests
+## 负载测试对比的最佳实践
 
-- Always use the same cluster setup to compare different tests.
-- Calculate the number of users required to reach an average time of at least 10ms. And then compare the tests using that number of users. Anything less than that means the DB is not being stressed well enough and can introduce a lot of noise in the results.
-- While starting another test, it is recommended to reset the DB and initialize it again to start with the exact same state as the previous test. This can be done by running the following command:
+- 始终使用相同的集群配置来对比不同测试。
+- 用户数应取到能让平均耗时至少达到 10ms 的规模，再用该用户数做对比。低于此规模说明数据库压力不足，会给结果引入大量噪声。
+- 开始新一轮测试前，建议重置数据库并重新初始化，使每轮从完全相同的状态开始：
 
 ```sh
 go run ./cmd/ltctl loadtest reset
 ```
-

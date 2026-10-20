@@ -1,107 +1,112 @@
-# GenController Configuration
+# GenController 配置
+
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/config/gencontroller.md
+>
+> 使用背景见[数据生成](../generating_data.md)。
 
 ## NumTeams
 
 *int64*
 
-The number of teams to be created.
+要创建的团队数量。
 
 ## NumChannelsDM
 
 *int64*
 
-The number of DM channels to be created.
+要创建的 DM（私信）频道数量。
 
 ## NumChannelsGM
 
 *int64*
 
-The number of GM channels to be created.
+要创建的 GM（群聊）频道数量。
 
 ## NumChannelsPrivate
 
 *int64*
 
-The number of private channels to be created.
+要创建的私有频道数量。
 
 ## NumChannelsPublic
 
 *int64*
 
-The number of public channels to be created.
+要创建的公开频道数量。
 
 ## NumCPAFields
 
 *int64*
 
-The number of Custom Profile Attribute fields to be created.
+要创建的自定义用户属性（Custom Profile Attribute）字段数量。
 
 ## NumPosts
 
 *int64*
 
-The number of posts to be created.
+要创建的帖子数量。
 
 ## NumReactions
 
 *int64*
 
-The number of reactions to be created.
+要创建的表情回应（reaction）数量。
 
 ## NumPostReminders
 
 *int64*
 
-The number of post reminders to be created.
+要创建的帖子提醒数量。
 
 ## NumSidebarCategories
 
 *int64*
 
-The number of sidebar categories to be created.
+要创建的侧边栏分类数量。
 
 ## NumFollowedThreads
 
 *int64*
 
-The number of threads to follow.
+要关注的讨论串（thread）数量。
 
 ## PercentReplies
 
 *float64*
 
-The percentage of replies (over the total number of posts) to be created.
+回复帖占总帖子数的百分比。
 
 ## PercentRepliesInLongThreads
 
 *float64*
 
-The percentage of replies (over the total number of reply posts) to be created in long running threads.
+长讨论串中的回复帖占总回复帖数的百分比。
 
 ## PercentUrgentPosts
 
 *float64*
 
-The percentage of posts (over the total number of posts) to be marked with urgent priority.
+标记为紧急优先级（urgent）的帖子占总帖子数的百分比。
 
 ## ChannelMembersDistribution
 
 *[]gencontroller.ChannelMemberDistribution*
 
-The distribution of memberships in channels by maximum number of users in them.
+按频道成员上限划分的频道成员分布。
 
 ### MemberLimit
 
-The maximum number of users a channel in this group can have. A value of 0 means there is no limit.
+本组频道允许的最大成员数。0 表示不限。
 
 ### PercentChannels
 
-The percentage of channels that will have the limit configured above.
+采用上述成员上限的频道所占百分比。
 
 ### Probability
 
-The frequency with which this group of channels will be chosen.
+该组频道被选中的频率权重。
 
-#### Note
+#### 说明
 
-The total sum of channels percentages must be equal to 1.
+各组频道百分比之和必须等于 1。

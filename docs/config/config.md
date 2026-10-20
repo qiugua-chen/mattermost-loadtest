@@ -1,45 +1,52 @@
-# LoadTest Configuration
+# LoadTest 配置（config.json）
 
-## ConnectionConfiguration
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/config/config.md
+
+## ConnectionConfiguration（连接配置）
 
 ### ServerURL
 
 *string*
 
-The URL to direct the load. Should be the public facing URL of the target Mattermost instance.
+压测流量的目标 URL，应为目标 Mattermost 实例对外可访问的地址。
+
+> **扩展版说明**：启用链路层采集时，此处填 nginx-perf 代理地址
+> （如 `http://127.0.0.1:18065`），由代理转发到真实实例并落盘全量访问日志，
+> 详见 [monitoring/README.md](../../monitoring/README.md)。
 
 ### WebsocketURL
 
 *string*
 
-The URL to the WebSocket endpoint the users will connect to.  
-In most cases this will be the same as `ServerURL` with `http` replaced with `ws` or `https` replaced with `wss`.
+用户建立 WebSocket 连接的端点地址。
+大多数情况下与 `ServerURL` 相同，仅把 `http` 换成 `ws`、`https` 换成 `wss`。
 
 ### AdminEmail
 
 *string*
 
-The e-mail for the system admin of the target Mattermost instance.
+目标 Mattermost 实例系统管理员的邮箱。
 
 ### AdminPassword
 
 *string*
 
-The password for the system admin of the target Mattermost instance.
+目标 Mattermost 实例系统管理员的密码。
 
-## UserControllerConfiguration
+## UserControllerConfiguration（用户控制器配置）
 
 ### Type
 
 *string*
 
-The type of [`UserController`](controllers.md) that will be used to drive the users.
+用于驱动用户的 [`UserController`](../controllers.md) 类型。
 
-Possible values:
-- `simple` - to use [`SimpleController`](controllers.md#simplecontroller)
-- `simulative`  - to use [`SimulController`](controllers.md#simulcontroller)
-- `noop` - to use [`NoopController`](controllers.md#noopcontroller)
-- `generative` - to use [`GenController`](controllers.md#gencontroller)
+可选值：
+- `simple` —— 使用 [`SimpleController`](../controllers.md#simplecontroller)（**本扩展版消息场景使用此类型**）
+- `simulative` —— 使用 [`SimulController`](../controllers.md#simulcontroller)
+- `noop` —— 使用 [`NoopController`](../controllers.md#noopcontroller)
+- `generative` —— 使用 [`GenController`](../controllers.md#gencontroller)
 
 ### RatesDistribution
 
@@ -48,138 +55,140 @@ Possible values:
   Percentage float64
 }*
 
-The distribution of action rates for running controllers.
+各 controller 的动作速率分布。
 
-Rate is a multiplier that will affect the speed at which user actions are executed by the `UserController`.
+Rate 是乘数，影响 `UserController` 执行用户动作的速度：
 
-A rate < 1.0 will run actions at a faster pace.   
-A rate == 1.0 will run actions at the default pace.    
-A rate > 1.0 will run actions at a slower pace.  
+- rate < 1.0：动作节奏加快。
+- rate == 1.0：默认节奏。
+- rate > 1.0：动作节奏放慢。
 
-Percentage is the percentage of controllers that should run with the specified rate.
+Percentage 是以该速率运行的 controller 所占比例。
 
 ### ServerVersion
 
 *string*
 
-An optional MM server version to use when running actions (e.g. `5.30.0`).
-This value overrides the actual server version. If left empty, the one returned by the server is used instead.
+可选：运行动作时使用的 MM 服务端版本号（如 `5.30.0`）。
+设置后覆盖实际服务端版本；留空则使用服务端返回的版本。
 
-## InstanceConfiguration
+## InstanceConfiguration（实例数据配置）
+
+以下各项均由 `init` 初始化过程创建。
 
 ### NumTeams
 
 *int*
 
-The number of teams the target Mattermost instance should have.  
-These will be created during the `init` process.
+目标 Mattermost 实例应拥有的团队数量。
 
 ### NumChannels
 
 *int*
 
-The number of channels the target Mattermost instance should have.  
-These will be created during the `init` process.
+目标 Mattermost 实例应拥有的频道数量。
 
 ### NumPosts
 
 *int*
 
-The number of posts the target Mattermost instance should have.  
-These will be created during the `init` process.
+目标 Mattermost 实例应拥有的帖子数量。
 
 ### NumReactions
 
 *int*
 
-The number of reactions the target Mattermost instance should have.  
-These will be created during the `init` process.
+目标 Mattermost 实例应拥有的表情回应（reaction）数量。
 
 ### NumAdmins
 
 *int*
 
-The number of admins the target Mattermost instance should have.  
-These will be created during the `init` process.
-	
-## UsersConfiguration
+目标 Mattermost 实例应拥有的管理员数量。
+
+## UsersConfiguration（用户配置）
 
 ### InitialActiveUsers
 
 *int*
 
-The amount of active users to run when the load-test starts.
+负载测试启动时的活跃用户数量。
 
 ### UsersFilePath
 
 *string*
 
-The path to the file which contains a list of user email and passwords that will be used by the tool if set. Each line should be for a user containing an email and password separated by space. The number of lines in the file should be at least equal to MaxActiveUsers.
+用户凭据文件路径。设置后工具使用该文件中的账号而非自动注册。
+每行一个用户，格式为"邮箱（或用户名）+ 空格 + 密码"；
+文件行数应不少于 MaxActiveUsers。
+
+> **扩展版说明**：本扩展版的 `scripts/mattermost_prepare_users.py`
+> 即用于批量生成符合该格式的凭据文件。
 
 ### MaxActiveUsers
 
 *int*
 
-The maximum amount of concurrently active users the load-test agent will run.
+load-test agent 运行的最大并发活跃用户数。
 
 ### MaxActiveBrowserUsers
 
 *int*
 
-The maximum amount of concurrently active browser users per instance the load-test agent will run.
+每个实例上 load-test agent 运行的最大并发浏览器用户数。
 
 ### PercentOfUsersAreAdmin
 
 *float*
 
-The percentage of users generated that will be system admins.
+生成的用户中系统管理员所占百分比。
 
-## LogSettings
+## LogSettings（日志配置）
 
 ### EnableConsole
 
 *bool*
 
-If true, the server outputs log messages to the console based on ConsoleLevel option.
+为 true 时，按 ConsoleLevel 设置的级别向控制台输出日志。
 
 ### ConsoleLevel
 
 *string*
 
-Level of detail at which log events are written to the console.
+控制台日志的详细级别。
 
 ### ConsoleJson
 
 *bool*
 
-When true, logged events are written in a machine readable JSON format. Otherwise they are printed as plain text.
+为 true 时日志以机器可读的 JSON 格式输出，否则为纯文本。
 
 ### EnableFile
 
 *bool*
 
-When true, logged events are written to the file specified by the `FileLocation` setting.
+为 true 时日志写入 `FileLocation` 指定的文件。
 
 ### FileLevel
 
 *string*
 
-Level of detail at which log events are written to log files.
+文件日志的详细级别（排查问题时设为 `"DEBUG"`）。
 
 ### FileJson
 
 *bool*
 
-When true, logged events are written in a machine readable JSON format. Otherwise they are printed as plain text.
+为 true 时文件日志为 JSON 格式，否则为纯文本。
 
 ### FileLocation
 
 *string*
 
-The location of the log file.
+日志文件路径。
 
 ### EnableColor
 
 *bool*
 
-When true enables colored output.
+为 true 时启用彩色输出。

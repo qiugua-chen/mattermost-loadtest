@@ -1,22 +1,11 @@
-# Comparison Config
+# Comparison 配置（comparison.json）
 
-## BaseBuild 
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/config/comparison.md
+>
+> 使用流程见[自动化负载对比测试](../comparison.md)。
 
-*BuildConfig*
-
-### Label
-
-*string*
-
-A label identifying the build.
-
-### URL
-
-*string*
-
-URL from where to download a build release. This can also point to a local file if prefixed with "file://". In such case, the build file will be uploaded to the app servers.
-
-## NewBuild
+## BaseBuild（基准构建）
 
 *BuildConfig*
 
@@ -24,88 +13,104 @@ URL from where to download a build release. This can also point to a local file 
 
 *string*
 
-A label identifying the build.
+标识该构建的标签。
 
 ### URL
 
 *string*
 
-URL from where to download a build release. This can also point to a local file if prefixed with "file://". In such case, the build file will be uploaded to the app servers.
+构建发布包的下载地址。以 `file://` 前缀指向本地文件时，构建文件会被上传到 app server。
 
-## LoadTests 
+## NewBuild（待对比构建）
+
+*BuildConfig*
+
+### Label
+
+*string*
+
+标识该构建的标签。
+
+### URL
+
+*string*
+
+构建发布包的下载地址。以 `file://` 前缀指向本地文件时，构建文件会被上传到 app server。
+
+## LoadTests（负载测试列表）
 
 *[]LoadTestConfig*
 
-### Type 
+### Type
 
 *LoadTestType*
 
-The type of load-test to run.
+要运行的负载测试类型。
 
-Possible values:
-- "bounded"
-- "unbounded"
+可选值：
+- `"bounded"`（定界：固定用户数）
+- `"unbounded"`（非定界：自动探测容量上限）
 
 ### DBEngine
 
 *DatabaseEngine*
 
-The database engine for the app server.
+app server 使用的数据库引擎。
 
-Possible values:
-- "mysql"
-- "postgresql"
+可选值：
+- `"mysql"`
+- `"postgresql"`
 
 ### DBDumpURL
 
 *string*
 
-An optional URL to a MM server database dump file to be loaded before running the load-test.  
-The file is expected to be gzip compressed. This can also point to a local file if prefixed with "file://". In such case, the dump file will be uploaded to the app servers.
+可选：运行压测前要加载的 Mattermost 数据库 dump 文件地址。
+文件应为 gzip 压缩格式。以 `file://` 前缀指向本地文件时，dump 文件会被上传到 app server。
 
 ## S3BucketDumpURI
 
 *string*
 
-An optional URI to an S3 bucket (something like `s3://bucket-name/optional-subdir`) whose contents will be copied to the deployed bucket before running the load-test.
-See [the corresponding setting in the deployer configuration](deployer.md#S3BucketDumpURI) to learn more about this value.
+可选：S3 桶 URI（形如 `s3://bucket-name/optional-subdir`），其内容会在压测前拷贝到部署的桶中。
+该值的详细说明见 [deployer 配置中的同名设置](deployer.md#s3bucketdumpuri)。
 
 ### NumUsers
 
 *int*
 
-The number of users to run. This is only considered if `Type` is "bounded".
+运行的用户数。仅当 `Type` 为 `"bounded"` 时生效。
 
-### Duration 
+### Duration
 
 *string*
 
-The duration of the load-test. This is only considered if `Type` is "bounded".
+负载测试时长。仅当 `Type` 为 `"bounded"` 时生效。
 
-## Output
+## Output（输出配置）
 
 *OutputConfig*
 
-### UploadDashboard 
+### UploadDashboard
 
 *bool*
 
-A boolean indicating whether a comparative Grafana dashboard should be generated and uploaded.
+是否生成并上传对比用的 Grafana 仪表盘。
 
 ### GenerateReport
 
 *bool*
 
-A boolean indicating whether to generate a markdown report at the end of the comparison.
+是否在对比结束后生成 Markdown 报告。
 
 ### GenerateGraphs
 
 *bool*
 
-A boolean indicating whether to generate gnuplot graphs at the end of the comparison.
+是否在对比结束后生成 gnuplot 图表。
 
-### GraphsPath 
+### GraphsPath
 
 *string*
 
-An optional path indicating where to write the graphs.
+可选：图表的输出路径。

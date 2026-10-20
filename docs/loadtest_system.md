@@ -1,4 +1,15 @@
-# Complete load-test system
+# 完整负载测试系统架构
+
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/loadtest_system.md
+
+下图为完整压测体系的组件关系：
+
+- **coordinator**：统一驱动整个 agent 集群（bounded / unbounded 模式）。
+- **lt-agent**：压测执行单元，每个 agent 模拟一批虚拟用户。
+- **proxy**：被测 Mattermost 集群前的代理层。
+- **app cluster / database cluster**：被测 Mattermost 应用与数据库集群。
+- **metrics instance**：Prometheus + Grafana，从各组件抓取指标。
 
 ```
 +--------------------------------------------------------------------------------------------------+
@@ -48,3 +59,8 @@
            | +-------------+  +-------------+  +-------------+ |
            +---------------------------------------------------+
 ```
+
+> **扩展版说明**：本扩展版的部署形态更轻量——单/多 ltagent 直连（或经
+> `monitoring/nginx-perf` 代理）被测实例，agent 自带 `/metrics` 端点供
+> Prometheus 抓取，可不依赖 coordinator。详见根目录 README 与
+> [monitoring/README.md](../monitoring/README.md) 的三层监控模型。

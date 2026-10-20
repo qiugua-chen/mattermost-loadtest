@@ -1,96 +1,98 @@
-# Generating data
+# 数据生成（Generating data）
 
-When running a load-test, there are many variables that can affect its performance. One of them is the shape and size of the data the system manages. Your analysis may require to keep that dataset constant for all of your tests, or maybe you actually want to fix all other variables and only change the initial state of the database. In both cases, you need a process you can follow to generate some data reliably.
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/generating_data.md
 
-This document explains such a process, enabled by one of the controllers implemented in the tool: [`gencontroller`](controllers.md#gencontroller).
+运行负载测试时，影响性能的变量很多，其中之一就是系统承载数据的形态与规模。你的分析可能要求所有测试共享同一份数据集；也可能要固定其他变量、只改变数据库初始状态。两种情况都需要一套可复现的数据生成流程。
 
-## Prerequisites
+本文介绍这套流程，它由工具内置的一种控制器实现：[`gencontroller`](controllers.md#gencontroller)。
 
-Before starting, make sure you have read and understood [how to run a load-test locally](local_loadtest.md).
+## 前置条件
 
-## Process
+开始前，请确保已读懂[本地运行负载测试](local_loadtest.md)。
 
-The process can be divided in the following phases:
+## 流程
 
-1. Setup your target system.
-2. Configure the load-test tool.
-3. Run the test to generate the data.
-4. Dump and archive the data.
+整个流程分为四个阶段：
 
-### Target system setup
+1. 准备目标系统。
+2. 配置负载测试工具。
+3. 运行测试生成数据。
+4. 导出并归档数据。
 
-While the load-test will send the needed requests to generate the data configured, you first need a system that can listen to those requests.
+### 目标系统准备
 
-How to perform this preliminary step will depend on where you want to generate the data:
+负载测试会发送生成数据所需的请求，但首先需要一个能接收这些请求的系统。
 
-- Local setup: if you want to run everything locally, make sure to follow the server documentation to setup a server in your laptop (you can use the usual developer workflow, or run a released version, up to you).
-- Existing server: if you want to use an existing server, then this step is already done :) Beware that this process will create potentially lots of data in that system, so you should never target a production system here.
-- Ad-hoc AWS setup: you can use the load-test deployer to setup a new cluster in AWS. Read the [Deployment section in the Terraform guide](terraform_loadtest.md#deployment) to learn how to do it. In this step, you can also deploy an agent to its own instance, from which you will start the test later.
+这一步怎么做取决于你想在哪里生成数据：
 
-In any case, you'll end up with a running Mattermost server. It's very important that this server satisfies two conditions:
-1. It has a sysadmin user whose credentials you can pass to the load-test agent.
-2. It is reachable by the machine from where you plan to run the agent.
+- 本地环境：全部在本地运行时，按服务端文档在你的电脑上搭一个 Mattermost 服务（用常规开发者工作流或运行发布版本均可）。
+- 已有服务器：直接复用即可 :) 注意本流程会在该系统中创建大量数据，**绝不要**对生产系统执行。
+- 临时 AWS 环境：可以用 load-test deployer 在 AWS 搭建新集群，方法见 [Terraform 指南的 Deployment 一节](terraform_loadtest.md#deployment)。这一步也可以顺带把 agent 部署到独立实例上，稍后再从该实例启动测试。
 
-The first condition is easy to satisfy: just note the username and password of any sysadmin, or create a new one it if it does not exist. For the second, it depends on how your Mattermost is deployed: if it's a local setup and you plan to run the agent from the same machine, then there's no problem; if it's an ad-hoc AWS setup, then the deployer has already taken care of this for you; if it's an existing deployment, simply make sure that the machine with the agent and the machine with the server can see each other.
+无论哪种方式，最终你都会得到一个运行中的 Mattermost 服务，且必须满足两个条件：
+1. 有一个 sysadmin 账号，凭据可以提供给 load-test agent。
+2. 计划运行 agent 的机器能访问到它。
 
-### Configuration
+第一条好办：记下任一 sysadmin 的用户名密码，没有就新建一个。第二条取决于部署方式：本地环境且同机运行 agent 则天然满足；AWS 临时环境 deployer 已处理好；已有部署则确认 agent 机器与服务器网络互通即可。
 
-Now that you have a working Mattermost server ready to react to the agent's requests, we need to configure the agent itself. Go to the machine where the agent will run, and follow these steps:
+### 配置
 
-1. First of all, make sure that the load-test is pointing to the target system. You can do so by changing the [`ConnectionConfiguration` in the `config/config.json` file](config/config.md#connectionconfiguration). This step is already taken care of if you used the load-test deployer to setup an AWS cluster.
-2. Then, verify that the [`UserController` in `config/config.json`](config/config.md#usercontrollerconfiguration) is set to `generative`. Also, set all absolute numbers under [`InstanceConfiguration` in that same file](config/config.md#usercontrollerconfiguration) to 0, since some commands do run an `init` process that populates the database with the data configured there. Since we are generating the data ourselves, we don't want anything done for us in that phase.
-3. Then, create or modify the gencontroller configuration file in `config/gencontroller.json`. You can use the sample file as a starting point:
+目标 Mattermost 就绪后，开始配置 agent。登录 agent 所在机器，执行：
+
+1. 首先确保压测指向目标系统：修改 [`config/config.json` 中的 `ConnectionConfiguration`](config/config.md#connectionconfiguration连接配置)。（用 deployer 搭的 AWS 集群此步已自动完成。）
+2. 确认 [`config/config.json` 中的 `UserController`](config/config.md#usercontrollerconfiguration用户控制器配置) 设为 `generative`；同时把同一文件中 [`InstanceConfiguration`](config/config.md#instanceconfiguration实例数据配置) 下的所有绝对数量设为 0——有些命令会执行 `init` 按这些配置灌库，而我们要自己造数，不需要它代劳。
+3. 创建或修改 `config/gencontroller.json`，可从样例文件开始：
 ```sh
 cp config/gencontroller.sample.json config/gencontroller.json
 ```
-4. Now tweak everything you need in the controller configuration. All the settings are [documented](config/gencontroller.md), but here are some recommendations:
-  - Make sure that the number of DMs is possible with the number of users you will run (more on simulated users later). If you run 10 users, the maximum number of different DMs is 45 so don't use a number larger than that. The formula for the maximum number of DMs is $n(n-1)/2$, with $n$ the number of users.
-  - All the settings follow specific distributions in real servers, so make sure to run some numbers in the server you want to mimic to make an educated decision here. As an example, the vast majority of channels in a normal server are DMs and GMs, accounting for 75% and 15% respectively, while private channels represent a 7% and public ones only a 3%.
-  
-You don't need to modify any of the other configuration files, since they are not considered when using a gencontroller.
+4. 按需调整控制器配置。全部设置项都有[文档](config/gencontroller.md)，这里给几条建议：
+  - 私信（DM）数量必须与运行用户数匹配（ simulated users 详见后文）。跑 10 个用户时，不同 DM 组合最多 45 个，不要设得比这更大。DM 上限公式为 n(n-1)/2，n 为用户数。
+  - 真实服务器中各项数据都有特定分布，决策前最好在你想模拟的服务器上取数估算。例如正常服务器中绝大多数频道是 DM 和 GM（群聊），分别约占 75% 和 15%，私有频道约 7%，公开频道仅约 3%。
 
+使用 gencontroller 时其他配置文件不会生效，无需修改。
 
-### Data generation
+### 数据生成
 
-With everything setup and configured, we get to the main step: generating the data.
+一切就绪，进入主步骤：生成数据。
 
-There are two more variables that you need to choose:
-- The number of simulated users that will run the actions to generate the data.
-- The rate of each simulated user; i.e., the speed at which it will run the actions.
+还需要确定两个变量：
+- 执行造数动作的模拟用户数。
+- 每个模拟用户的速率（rate），即执行动作的速度。
 
-There is no golden rule on how to choose these numbers. The best way to decide is to run a couple of initial tests and monitor  how the system behaves.
-- The more users you run, the faster the data will be generated.
-- The larger the rate is, the slower the data will be generated (yes, this rate is more of a period, not a rate, we'll change the name at some point).
+这两个值没有黄金法则，最好的方式是先跑几轮试探并观察系统表现：
+- 用户越多，造数越快。
+- rate 越大，造数越慢（没错，这个 rate 实际语义更接近"周期"而非"速率"，官方计划日后改名）。
 
-You probably want the data to be generated as quickly as possible, but be cautious, since this controller can quickly become a DDoS tool if configured with too many users or a quick enough loop. If you deployed a cluster to AWS, you should have Grafana and Prometheus automatically configured, so use them to monitor if the system can handle the load you're generating.
+你多半希望造数越快越好，但务必谨慎——用户数太多或循环太快时，这个控制器会迅速变成 DDoS 工具。如果你部署的是 AWS 集群，Grafana 和 Prometheus 已自动配好，用它们监控系统能否承受你制造的负载。
 
-In any case, to both experiment with these numbers and to run your final tests, go to your agent's machine and run the following:
+无论试探还是正式造数，都在 agent 机器上执行：
 
 ```sh
 go run ./cmd/ltagent -n 10 -r 0.5
 ```
 
-Those two flags are the ones you will want to tweak:
-- `-n` is the number of simulated users.
-- `-r` is the rate at which the user performs the actions (a number of 0.5 will halve the speed of the actions, while 2 will double it).
+要调的就是这两个参数：
+- `-n`：模拟用户数。
+- `-r`：用户执行动作的速率（0.5 表示动作速度减半，2 表示翻倍）。
 
-The command will exit once all the configured data has been successfully created. You can also stop the process early with <kbd>Ctrl-C</kbd>.
+全部配置数据创建完成后命令自动退出，也可用 <kbd>Ctrl-C</kbd> 提前终止。
 
-#### Batching
+#### 分批造数
 
-If you plan on running high number of users it might be unfeasible to generate data for all of those at the same time. In such a case you can split the generation process in batches by providing some useful flags:
+用户规模很大时，一次性为所有用户造数可能不可行。这时可以用几个参数把过程分批：
 
 ```sh
 go run ./cmd/ltagent -n 100 -r 1.0 --user-offset 100 --user-prefix ltuser
 ```
 
-- `-n 100` specifies we want to run 100 users.
-- `--user-prefix ltuser` specifies that all users will have a username starting with `ltuser-`.
-- `--user-offset 100` specifies that the first user simulated will be `ltuser-100`.
+- `-n 100`：运行 100 个用户。
+- `--user-prefix ltuser`：所有用户名以 `ltuser-` 开头。
+- `--user-offset 100`：第一个模拟用户是 `ltuser-100`。
 
-In short, this command will run users `ltuser-100`, `ltuser-101`, ..., `ltuser-199`.
+即本命令运行用户 `ltuser-100`、`ltuser-101`、……、`ltuser-199`。
 
-For example, you could use this to build a loop like the following, which will run 1000 users in batches of 100 each time:
+例如可以用下面的循环每次 100 个、共跑 1000 个用户：
 
 ```sh
 for i in `seq 0 100 1000`; do
@@ -98,22 +100,21 @@ for i in `seq 0 100 1000`; do
 done
 ```
 
-### Data archival
+### 数据归档
 
-When the data is finally generated, you will need to dump and archive it. How this process is performed is really up to you, but there are a few considerations:
+数据生成完毕后需要导出归档。具体方式自定，但有几点建议：
 
-- You can simply use the export tool in Mattermost, although it lacks some features to do a complete backup of the data.
-- The best way is to simply dump the database. This will depend on whether the server is using MySQL or PostgreSQL, but it will look something like the following:
+- 可以用 Mattermost 自带的导出工具，但它缺少完整备份所需的部分功能。
+- 最好的方式是直接 dump 数据库。视服务端使用 MySQL 还是 PostgreSQL 而定，大致如下：
 ```sh
-# For MySQL:
+# MySQL:
 mysqldump --set-gtid-purged --column-statistics=0 -h <host> -u <user> <dbname> -p<password> | gzip > mysqldump.sql.gz
 
-# For PostgreSQL:
+# PostgreSQL:
 PG_PASSWORD=<password> pg_dump -h <host> -p <port> <db_name> | gzip > postgresdump.sql.gz
 ```
-- The gencontroller also uploads some sample files, so make sure to backup your file backend as well. If you deployed an AWS cluster with the tool, and the cluster is using an S3 bucket, then make a copy of it before destroying.
+- gencontroller 还会上传一些示例文件，文件后端也要一并备份。如果是用本工具部署的 AWS 集群且使用 S3 桶，销毁前记得拷贝一份。
 
-That's it, upload your data somewhere safe and use it in your future tests as a starting point. If you want to know how, check the following settings in the comparison configuration:
-- [`DBDumpURL`](config/comparison.md/#DBDumpURL)
-- [`S3BucketDumpURI`](config/comparison.md#S3BucketDumpURI)
-
+完成后把数据上传到安全的位置，作为后续测试的初始状态。使用方法见对比配置中的：
+- [`DBDumpURL`](config/comparison.md#dbdumpurl)
+- [`S3BucketDumpURI`](config/comparison.md#s3bucketdumpuri)

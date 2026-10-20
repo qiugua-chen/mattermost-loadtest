@@ -1,24 +1,25 @@
-# Coordinator
+# Coordinator（协调器）
 
-## Introduction
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/coordinator.md
 
-The `coordinator` is the component in charge of managing a cluster of load-test
-agents and figure out what's the maximum number of concurrently active users
-the target Mattermost instance can support. This is achieved through the use of a simple feedback loop.
+## 简介
 
-When a load-test starts, the `coordinator` will begin to gradually increase the number of
-active users. At the same time, it will monitor performance by querying a
-[Prometheus](https://prometheus.io/docs/introduction/overview/) server collecting metrics from the target instance.
+`coordinator` 负责管理一个 load-test agent 集群，并通过一个简单的反馈回路，
+测出目标 Mattermost 实例能支撑的**最大并发活跃用户数**。
 
-When signs of performance degradation are detected, the `coordinator` will start
-decreasing the number of active users. When overall performance goes back to an
-accepted value (results of queries fall under the configured thresholds) the `coordinator` will start once again to increase the number
-of active users for the target instance.
+负载测试开始后，`coordinator` 会逐步增加活跃用户数；
+同时通过查询采集目标实例指标的
+[Prometheus](https://prometheus.io/docs/introduction/overview/) 服务来监控性能。
 
-This process will continue until an equilibrium point is found which will
-indicate the estimated maximum number of supported users.
+一旦检测到性能劣化的迹象，`coordinator` 开始减少活跃用户数；
+当整体性能回落到可接受水平（查询结果低于配置的阈值）后，
+`coordinator` 再次增加活跃用户数。
 
-## The feedback loop
+这个过程持续进行，直到找到平衡点——该点即为估算的最大可支撑用户数
+（即 unbounded 非定界压测模式）。
+
+## 反馈回路
 
 ```
                         +--------------------------------+

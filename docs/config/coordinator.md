@@ -1,6 +1,11 @@
-# Coordinator Config
+# Coordinator 配置（coordinator.json）
 
-## ClusterConfig
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/config/coordinator.md
+>
+> 组件原理见 [coordinator 说明](../coordinator.md)。
+
+## ClusterConfig（集群配置）
 
 *cluster.LoadAgentClusterConfig*
 
@@ -12,19 +17,19 @@
 
 *string*
 
-The unique identifier of the load-agent to be created and run.
+要创建并运行的 load-agent 的唯一标识。
 
 #### ApiURL
 
 *string*
 
-The URL to the load-test API server that will run the agent.
+运行该 agent 的 load-test API server 的地址。
 
 ### MaxActiveUsers
 
 *int*
 
-The maximum number of concurrently active users to be run across the whole load-agent cluster.
+整个 load-agent 集群运行的最大并发活跃用户数。
 
 ### BrowserAgents
 
@@ -34,21 +39,21 @@ The maximum number of concurrently active users to be run across the whole load-
 
 *string*
 
-The unique identifier of the browser load-agent to be created and run.
+要创建并运行的浏览器 load-agent 的唯一标识。
 
 #### ApiURL
 
 *string*
 
-The URL to the load-test API server that will run the agent. Since this is an agent as well, it will be the same as the load-test API server. This should not be confused with the LTBrowser API server which is a separate server that is controlled by the load-test API server.
+运行该 agent 的 load-test API server 的地址。因为同属 agent，与上面的 API server 相同。注意不要与 LTBrowser API server 混淆——后者是由 load-test API server 控制的独立服务。
 
 ### MaxActiveBrowserUsers
 
 *int*
 
-The maximum number of concurrently active browser users to be run across the entire load-agent cluster. Note that there is also a `MaxActiveBrowserUsers` setting in `config/config.json` which limits the number of browser users per individual agent, while this setting limits the total number of browser users across all browser agents in the cluster. This value must be less than or equal to `UsersConfiguration.MaxActiveBrowserUsers * number_of_browser_agents`. It is independent of `MaxActiveUsers`.
+整个 load-agent 集群运行的最大并发浏览器用户数。注意 `config/config.json` 中也有 `MaxActiveBrowserUsers`，那个限制的是**单个** agent 的浏览器用户数，而本设置限制的是集群内所有浏览器 agent 的**总**浏览器用户数。该值必须小于等于 `UsersConfiguration.MaxActiveBrowserUsers * 浏览器 agent 数`，与 `MaxActiveUsers` 相互独立。
 
-## MonitorConfig
+## MonitorConfig（监控配置）
 
 *performance.MonitorConfig*
 
@@ -56,18 +61,18 @@ The maximum number of concurrently active browser users to be run across the ent
 
 *string*
 
-The URL to the [Prometheus](https://prometheus.io/docs/introduction/overview/) API server that will collect performance metrics for the target instance.
+采集目标实例性能指标的 [Prometheus](https://prometheus.io/docs/introduction/overview/) API server 地址。
 
 ### UpdateIntervalMs
 
 *int*
 
-The delay (in milliseconds) between each query update.
-This value also indirectly controls how often new users are added during the ramp-up phase, assuming there is no performance degradation (i.e., no query has exceeded its threshold).
-If performance degradation is detected, `coordinator.Config.RestTimeSec` determines the rate at which users are added or removed.
+每次查询更新之间的间隔（毫秒）。
+在未发生性能劣化（无查询超阈值）时，该值也间接控制爬坡阶段新增用户的频率。
+发生性能劣化时，用户增减节奏由 `coordinator.Config.RestTimeSec` 决定。
 
 > [!NOTE]
-> As of [MM-61922](https://mattermost.atlassian.net/browse/MM-61922) this setting has been fully deprecated and its value always defaults to 1000 (i.e. one second).
+> 自 [MM-61922](https://mattermost.atlassian.net/browse/MM-61922) 起，该设置已完全废弃，取值固定默认为 1000（即 1 秒）。
 
 ### Queries
 
@@ -77,100 +82,103 @@ If performance degradation is detected, `coordinator.Config.RestTimeSec` determi
 
 *string*
 
-The description for the query.
+查询的描述。
 
 #### Legend
 
 *string*
 
-The legend shown in this query's panel in the Grafana dashboard that is generated with all enabled queries. If this string is empty, Grafana creates an automatic legend for the panel.
+在所有启用查询自动生成的 Grafana 仪表盘中，该查询面板的图例。留空则由 Grafana 自动生成。
 
 #### Query
 
 *string*
 
-The [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/) query to be run.
+要执行的 [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/) 查询。
 
 #### Threshold
 
 *float64*
 
-The value over which the performance monitor will fire an alert to the coordinator's feedback loop.
+阈值：查询值超过它时，性能监控向 coordinator 的反馈回路发出告警。
 
 #### Alert
 
 *bool*
 
-The value indicating whether or not to fire an alert.
+是否启用告警。
+
+> **提示**：Queries 数组为空或全部 `Alert=false` 时为 bounded（定界）压测；
+> 至少一条启用即为 unbounded（非定界）压测。详见 [FAQ](../faq.md)。
 
 ## NumUsersInc
 
 *int*
 
-The number of active users to increment at each iteration of the feedback loop.  
-It should be proportional to the maximum number of users expected to test.
+反馈回路每次迭代增加的活跃用户数。
+应与预期测试的最大用户规模成比例。
 
 ## NumUsersDec
 
 *int*
 
-The number of active users to decrement at each iteration of the feedback loop.  
-It should be proportional to the maximum number of users expected to test.
+反馈回路每次迭代减少的活跃用户数。
+应与预期测试的最大用户规模成比例。
 
 ## RestTimeSec
 
 *int*
 
-The number of seconds to wait after a performance degradation event before starting to increment or decrement users again.
+发生性能劣化事件后，等待多少秒再重新开始增/减用户。
 
-**Note**: The actual time waited before an increment or decrement action can be up to (`RestTimeSec + MonitorConfig.UpdateIntervalMs/1000`) seconds.
+**注**：实际增/减动作前的等待时间最长可达（`RestTimeSec + MonitorConfig.UpdateIntervalMs/1000`）秒。
 
-## LogSettings
+## LogSettings（日志配置）
 
 ### EnableConsole
 
 *bool*
 
-If true, the server outputs log messages to the console based on ConsoleLevel option.
+为 true 时，按 ConsoleLevel 设置的级别向控制台输出日志。
 
 ### ConsoleLevel
 
 *string*
 
-Level of detail at which log events are written to the console.
+控制台日志的详细级别。
 
 ### ConsoleJson
 
 *bool*
 
-When true, logged events are written in a machine readable JSON format. Otherwise they are printed as plain text.
+为 true 时日志以机器可读的 JSON 格式输出，否则为纯文本。
 
 ### EnableFile
 
 *bool*
 
-When true, logged events are written to the file specified by the `FileLocation` setting.
+为 true 时日志写入 `FileLocation` 指定的文件。
 
 ### FileLevel
 
 *string*
 
-Level of detail at which log events are written to log files.
+文件日志的详细级别。
 
 ### FileJson
 
 *bool*
 
-When true, logged events are written in a machine readable JSON format. Otherwise they are printed as plain text.
+为 true 时文件日志为 JSON 格式，否则为纯文本。
 
 ### FileLocation
 
 *string*
 
-The location of the log file.
+日志文件路径。
 
 ### EnableColor
 
 *bool*
 
-When true enables colored output.
+为 true 时启用彩色输出。

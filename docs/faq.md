@@ -1,47 +1,50 @@
-## FAQ
+# FAQ（常见问题）
 
-### What login methods does the load-test agent support?
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/faq.md
 
-The load-test agent currently supports only the email/password authentication method.
+### load-test agent 支持哪些登录方式？
 
-### What is a bounded load-test?
+目前仅支持 邮箱/密码 认证方式。
 
-We define a load-test to be bounded when the number of simulated users is fixed.
-This is particularly useful when running performance comparisons between two clusters/builds.
+### 什么是 bounded（定界）负载测试？
 
-### What is an unbounded load-test
+模拟用户数固定不变的负载测试称为 bounded。
+特别适用于在两个集群/两个构建版本之间做性能对比。
 
-We define a load-test to be unbounded when the number of simulated users can vary up to a pre-configured limit.
-This type of load-test is used to determine the capacity of a system and will output an estimated number of users.
-The rule of thumb is that when starting an unbounded load-test we should always shoot for more users than what we think an installation can support.
+### 什么是 unbounded（非定界）负载测试？
 
-### How do I configure a test to be bounded or unbounded?
+模拟用户数可在预配置上限内动态变化的负载测试称为 unbounded。
+用于测定系统容量，最终会输出一个估算的可支撑用户数。
+经验法则：启动 unbounded 压测时，目标用户数应始终设得**高于**你预估的实例承载能力。
 
-The nature of the test is controlled by how the [`coordinator`](https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/coordinator.md) controls the [feedback loop](https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/coordinator.md#the-feedback-loop). If the coordinator is configured to decrease the users when some metrics surpass a threshold (e.g. the P99 latency in the server is over 2 seconds), then the test will be unbounded. If the coordinator does not monitor these metrics and just let all users connect freely, then the test will be bounded.
+### 如何配置测试为 bounded 或 unbounded？
 
-To configure this, you need to take a look at the [`MonitorConfig.Queries` configuration in the `coordinator.json` file](coordinator_config.md#queries):
+测试的性质由 [`coordinator`](coordinator.md) 如何控制[反馈回路](coordinator.md#反馈回路)决定。如果 coordinator 配置为"某些指标超阈值时减少用户"（例如服务端 P99 延迟超过 2 秒），则为 unbounded；如果 coordinator 不监控这些指标、让所有用户自由连接，则为 bounded。
 
-- If the array of queries is empty, or all of them are disabled (by setting `Alert` to `false`), the test is **bounded**.
-- If there is at least one query that is enabled, the test is **unbounded**.
+具体配置见 [`coordinator.json` 中的 `MonitorConfig.Queries` 配置](config/coordinator.md#queries)：
 
-Note that in both cases, `ClusterConfig.MaxActiveUsers` should be set to `AgentInstanceCount * UsersConfiguration.MaxActiveUsers`.
+- 查询数组为空，或全部禁用（`Alert` 设为 `false`）→ **bounded**。
+- 至少有一条查询启用 → **unbounded**。
 
-### How many users does an agent support?
+注意两种情况下，`ClusterConfig.MaxActiveUsers` 都应设为 `AgentInstanceCount * UsersConfiguration.MaxActiveUsers`。
 
-For an agent running in a `c5.xlarge` instance in AWS (4 vCPU, 8 GB RAM), the maximum number of users recommended is 2000.
+### 单个 agent 支持多少用户？
 
-### Can I use a pre-existing Mattermost or database deployment?
+AWS `c5.xlarge` 实例（4 vCPU、8 GB 内存）上运行的 agent，建议最大用户数为 2000。
 
-Yes, you can use an existing Mattermost deployment, or just the database portion.
+### 可以使用已有的 Mattermost 或数据库部署吗？
 
-Note: You should **not** utilize an existing production setup to loadtest against because the loadtest agent will create users, posts, teams and channels and utilize most of your server resources. Best practice is to clone your production setup and loadtest against that.
+可以，可使用已有的 Mattermost 部署，或仅复用其数据库部分。
 
-#### Using an existing Mattermost deployment
+注意：**不要**直接对生产环境做压测——压测 agent 会创建用户、帖子、团队和频道，并大量占用服务器资源。最佳实践是克隆一套生产环境用于压测。
 
-1. Set the `AppInstanceCount` and `TerraformDBSettings.InstanceCount` to `0` in the `config/deployer.json`. This will prevent the Mattermost and database cluster from being created.
-2. Update the `ConnectionConfiguration` values in `config/config.json` to the correct information for your pre-existing Mattermost deployment.
+#### 使用已有的 Mattermost 部署
 
-    `ServerURL` and `WebSocketURL` can be found in your **Mattermost** config.json file under `ServiceSettings`. If `WebSocketURL` is blank, then replace `http` / `https` with the appropriate `ws` or `wss` value.
+1. 在 `config/deployer.json` 中将 `AppInstanceCount` 和 `TerraformDBSettings.InstanceCount` 设为 `0`，避免创建 Mattermost 与数据库集群。
+2. 将 `config/config.json` 中的 `ConnectionConfiguration` 改为你的既有 Mattermost 部署信息。
+
+    `ServerURL` 和 `WebSocketURL` 可在 **Mattermost** 的 config.json 的 `ServiceSettings` 段找到。若 `WebSocketURL` 为空，将 `http`/`https` 相应替换为 `ws`/`wss`。
 
     ```json
     "ConnectionConfiguration": {
@@ -52,20 +55,20 @@ Note: You should **not** utilize an existing production setup to loadtest agains
     }
     ```
 
-#### Using an existing database deployment
+#### 使用已有的数据库
 
-Before attempting to use an existing database, ensure your database will accept the connections from where you've configured your resources to deploy into on AWS.
+使用已有数据库前，确保数据库允许来自 AWS 资源部署网段的连接。
 
-1. Set the `TerraformDBSettings.InstanceCount` to `0` in the `config/deployer.json`. This will prevent the database cluster from being created.
-2. Create a config patch file with the appropriate config settings to access your database. Your patch file should look like the below file, with the values representing your deployment.
+1. 在 `config/deployer.json` 中将 `TerraformDBSettings.InstanceCount` 设为 `0`，避免创建数据库集群。
+2. 创建一个 config patch 文件，填入访问数据库所需的配置。patch 文件内容参考下例（值按你的部署填写）。
 
-    Note: In this example, we will create a patch file with the below called `configPatch.json` stored in the root loadtest folder.
+    注：本例将以下文件命名为 `configPatch.json`，放在 loadtest 根目录。
 
     ```json
     {
         "SqlSettings": {
             "DriverName": "postgres",
-            "DataSource": "postgres://mmuser:mostest@databaseURL:port/mattermost_test?sslmode=disable\u0026connect_timeout=10\u0026binary_parameters=yes",
+            "DataSource": "postgres://mmuser:mostest@databaseURL:port/mattermost_test?sslmode=disable&connect_timeout=10&binary_parameters=yes",
             "DataSourceReplicas": [],
             "DataSourceSearchReplicas": [],
             "MaxIdleConns": 20,
@@ -82,52 +85,52 @@ Before attempting to use an existing database, ensure your database will accept 
     }
     ```
 
-3. Modify `MattermostConfigPatchFile` within the `config/deployer.json` file to point to your patch file with an absolute path.
+3. 将 `config/deployer.json` 中的 `MattermostConfigPatchFile` 改为该 patch 文件的绝对路径。
 
-    Example:
+    示例：
 
     ```json
     "MattermostConfigPatchFile": "/home/ubuntu/mattermost-load-test-ng/configPatch.json",
     ```
 
-4. Continue with the deployment create process.
+4. 继续执行 deployment create 流程。
 
-### Can I run multiple load tests simultaneously with the same AWS account?
+### 可以用同一个 AWS 账号同时跑多轮压测吗？
 
-Yes, you can run multiple load test deployments simultaneously within the same AWS account. The key requirement is that each deployment must have a `ClusterName` and `TerraformStateDir` that are unique in its `config/deployer.json` file.
+可以。关键要求是每个部署在 `config/deployer.json` 中的 `ClusterName` 和 `TerraformStateDir` 必须唯一。
 
-The `ClusterName` is used as a prefix for all AWS resources (EC2 instances, security groups, S3 buckets, etc.) created by the deployment. The `TerraformStateDir` is where Terraform stores the state files locally on your machine for the deployment. Both must be unique to avoid conflicts between deployments.
+`ClusterName` 用作部署创建的所有 AWS 资源（EC2 实例、安全组、S3 桶等）的前缀；`TerraformStateDir` 是 Terraform 在你本机存放状态文件的目录。两者都必须唯一以避免部署间冲突。
 
-Steps to run multiple simultaneous deployments:
+并行多部署的步骤：
 
-1. Create separate deployer config files for each deployment:
+1. 为每个部署复制一份 deployer 配置：
     ```sh
     cp config/deployer.json config/deployer-test1.json
     cp config/deployer.json config/deployer-test2.json
     ```
-1. Edit each config file to set unique values for both `ClusterName` and `TerraformStateDir`:
-    - `ClusterName`: e.g., `"loadtest1"`, `"loadtest2"`, etc.
-    - `TerraformStateDir`: e.g., `"/var/lib/mattermost-load-test-ng/loadtest1"`, `"/var/lib/mattermost-load-test-ng/loadtest2"`, etc.
+1. 编辑各配置文件，设置唯一的 `ClusterName` 和 `TerraformStateDir`：
+    - `ClusterName`：如 `"loadtest1"`、`"loadtest2"` 等。
+    - `TerraformStateDir`：如 `"/var/lib/mattermost-load-test-ng/loadtest1"`、`"/var/lib/mattermost-load-test-ng/loadtest2"` 等。
 
-1. Run the deployment create command for each deployment in different terminals:
+1. 在不同终端分别为各部署执行创建命令：
     ```sh
     go run ./cmd/ltctl deployment create --config config/deployer-test1.json
     go run ./cmd/ltctl deployment create --config config/deployer-test2.json
     ```
 
-### Can I export a Grafana dashboard for future reference?
+### 可以导出 Grafana 仪表盘留存吗？
 
-Yes, you can do so by using the feature to [publish a snapshot to Raintank](https://grafana.com/docs/grafana/latest/dashboards/share-dashboards-panels/#publish-a-snapshot). An example of what such a snapshot looks like: [MySQL bounded test comparing `v7.9.1` vs `v7.10.0-rc2`](https://snapshots.raintank.io/dashboard/snapshot/h356ygrRZIUFWf5u5cctLjFavu97lFR2?orgId=2).
+可以，通过[发布快照到 Raintank](https://grafana.com/docs/grafana/latest/dashboards/share-dashboards-panels/#publish-a-snapshot) 功能实现。快照示例：[MySQL bounded 测试对比 `v7.9.1` vs `v7.10.0-rc2`](https://snapshots.raintank.io/dashboard/snapshot/h356ygrRZIUFWf5u5cctLjFavu97lFR2?orgId=2)。
 
-Two considerations:
+两点注意：
 
-- Due to [this issue](https://github.com/grafana/grafana/issues/32585), you need to be logged in to access the Snapshot option in the Share dialog. Although logging in is not usually needed in these temporary instances, you can still do so for this purpose with the credentials for the `admin` user, that are listed under the Grafana URL when running `deployment info`.
-- Note that a snapshot, although very useful for reference, is not a fully-functioning dashboard, so you will not be able to query new data using it. Take a look at the example above to understand how it works.
+- 由于[此 issue](https://github.com/grafana/grafana/issues/32585)，需要登录才能在分享对话框中看到 Snapshot 选项。虽然这些临时实例通常无需登录，但为此目的可以用 `deployment info` 输出的 Grafana URL 下方列出的 `admin` 凭据登录。
+- 快照虽便于留存参考，但不是功能完整的仪表盘，无法用它查询新数据。参考上面的示例理解其工作方式。
 
-### Can I stress test the ElasticSearch jobs?
+### 可以对 ElasticSearch 任务做压力测试吗？
 
-ElasticSearch schedules a daily job for aggregating posts. For configuring this, one needs to modify the Mattermost server's setting `ElasticsearchSettings.PostsAggregatorJobStartTime`, which accepts a hard-coded time (local to the machine running the server) formatted as a string like `"15:04"`.
-If you want to stress test this specific job during a load-test, you can use the [config patch](config/deployer.md#mattermost-config-patch-file) setting in the deployer config to change it to a time where the test will be running, using a partial Mattermost config like the following one:
+ElasticSearch 每天调度一次帖子聚合任务，配置方式是修改 Mattermost 服务端的 `ElasticsearchSettings.PostsAggregatorJobStartTime`（接受服务器本地时间的硬编码字符串，格式如 `"15:04"`）。
+如果想在压测期间专门压这个任务，可以用 deployer 配置中的 [config patch](config/deployer.md#mattermost-config-patch-file) 把任务时间改到压测运行时段，patch 内容示例：
 
 ```json
 {
@@ -137,20 +140,20 @@ If you want to stress test this specific job during a load-test, you can use the
 }
 ```
 
-### Can I use a custom load balancer (like an ALB/NLB) in front of the Mattermost server?
+### 可以在 Mattermost 前面使用自定义负载均衡器（如 ALB/NLB）吗？
 
-Yes, it's possible by disabling the proxy server and setting up the `ServerURL` manually pointing to the reverse proxy. The app servers must be registered with the load balancer manually while the environment is being created, so the ideal scenario is to setup the LB/Target Group in advance and then register the instances as they become available:
+可以：禁用内置代理服务器，并手动把 `ServerURL` 指向你的反向代理。app server 需要在环境创建过程中手动注册到负载均衡器，因此理想做法是提前建好 LB/Target Group，实例就绪后逐个注册：
 
-- Setup the `deployer.json` with: `ProxyInstanceCount` set to `0` and `ServerURL` (**not** `SiteURL`) pointing to your reverse proxy host, depending on your needs.
-- While your environment is being created, you can configure your reverse proxy to point to the Mattermost servers when the app servers are ready.
+- `deployer.json` 配置：`ProxyInstanceCount` 设为 `0`，`ServerURL`（注意**不是** `SiteURL`）指向你的反向代理地址。
+- 环境创建过程中，app server 就绪后把你的反向代理指向它们。
 
-## Troubleshooting
+## 故障排查
 
-### Increase debugging level
+### 提高调试级别
 
-For troubleshooting purposes, the first step should be increasing the debugging level of both the Mattermost server and the agents:
+排查问题的第一步是同时提高 Mattermost 服务端和 agent 的调试级别：
 
-- For the Mattermost server, a [config patch](config/deployer.md#mattermost-config-patch-file) can be used, with a partial config that can contain the following:
+- Mattermost 服务端：使用 [config patch](config/deployer.md#mattermost-config-patch-file)，内容可包含：
 
 ```json
 {
@@ -160,59 +163,63 @@ For troubleshooting purposes, the first step should be increasing the debugging 
 }
 ```
 
-- For the agents, the [`LogSettings.FileLevel` setting of the config.json file](config/config.md#file-level) should be set to `"DEBUG"` as well.
+- agent：将 [config.json 中的 `LogSettings.FileLevel`](config/config.md#file-level) 同样设为 `"DEBUG"`。
 
-### Users are not connecting
+### 用户连不上
 
-Make sure that both `Enable Account Creation` and `Enable Open Server` settings are set to `true` in MM System Console.
+确认 MM 系统控制台中 `Enable Account Creation` 和 `Enable Open Server` 均为 `true`。
 
-### Agent logs show several `current team should be set` errors. As a result, users are not joining teams and channels
+### agent 日志出现大量 `current team should be set` 错误，用户无法加入团队和频道
 
-This can be caused by the app server not being initialized (at least one open team should be created). This can be done manually or through the `ltctl loadtest init` command.
-If done manually, `Allow any user with an account on this server to join this team` under `Team Settings` should be set to `Yes`.
-Also the `Max Users Per Team` setting in Mattermost System Console should be enough to account for the number of simulated users.
+可能是 app server 尚未初始化（至少需要一个开放团队）。可手动创建，或执行 `ltctl loadtest init`。
+手动创建时，`Team Settings` 下的 `Allow any user with an account on this server to join this team` 应设为 `Yes`。
+同时，Mattermost 系统控制台的 `Max Users Per Team` 设置应足以容纳模拟用户数。
 
-### Agent failing with `MaxActiveUsers is not compatible with max Rlimit value` error
+> **扩展版说明**：本扩展版已对该错误做容错处理——预置账号无当前团队时
+> Reload 自动回退到首个所属团队，noopcontroller 的 joinChannel 降级为跳过，
+> 不再直接判定失败。详见 [EXT-CHANGES.md](EXT-CHANGES.md)。
 
-This means the maximum number of file descriptors is lower than what the agent needs to operate.
+### agent 报 `MaxActiveUsers is not compatible with max Rlimit value` 错误
 
-The following command can be run to raise the limit to the suggested value:
+表示最大文件描述符数低于 agent 运行所需。
+
+执行以下命令提高上限：
 
 ```sh
 ulimit -n VALUE
 ```
 
-#### Note
+#### 说明
 
-For Terraform deployments, this value is hard coded in the `systemd` file for the loadtest api. If you need to change the value, you'll have to change the `LimitNOFILE` value in `/lib/systemd/system/ltapi.service` file to a higher value.
+Terraform 部署中，该值硬编码在 loadtest api 的 `systemd` 文件里。如需修改，把 `/lib/systemd/system/ltapi.service` 中的 `LimitNOFILE` 调大：
 
-1. ssh into your loadtest agents. You can see the agents available by running `go run ./cmd/ltctl ssh`.
-2. Modify the `/lib/systemd/system/ltapi.service` file with the new value.
-3. Restart the related processes
+1. ssh 登录压测 agent（可用 `go run ./cmd/ltctl ssh` 查看有哪些 agent）。
+2. 修改 `/lib/systemd/system/ltapi.service` 中的值。
+3. 重启相关进程：
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl restart ltapi
 ```
 
-You will have to run this for every loadtest agent you have. These will be appended by `agent-` when you run the `ltctl ssh` command above.
+每台 loadtest agent 都要执行一遍（上述 `ltctl ssh` 输出中以 `agent-` 开头的即 agent 机器）。
 
-### What's the purpose of the `ServerURL` and `ServerScheme` settings?
+### `ServerURL` 和 `ServerScheme` 设置的用途？
 
-These are intended for users that need to override the connection URL to their Mattermost server in their load tests environments, in most cases because there's a custom reverse proxy in front of the load-test deployment.
+用于需要在压测环境中覆盖 Mattermost 连接 URL 的场景——最常见的是压测部署前有自定义反向代理。
 
-This **should not be used in most cases** as the loadtest agent will automatically detect the server URL and scheme from the configuration and deployed services.
+**大多数情况下不应使用**，因为 loadtest agent 会从配置和已部署服务中自动探测 server URL 与 scheme。
 
-### When starting deployment create, it fails due to `No default subnet for availability zone: 'AWS_SUBNETS_HERE'.`
+### 执行 deployment create 时报 `No default subnet for availability zone: 'AWS_SUBNETS_HERE'.`
 
-This likely happens because AWS doesn’t have an available subnet in the zone we explicitly set in the Terraform config. You can fix this by leaving AWSAvailabilityZone empty in config/deployer.json.
+通常是因为 AWS 在 Terraform 配置指定的可用区中没有可用子网。将 config/deployer.json 中的 AWSAvailabilityZone 留空即可解决。
 
-Just a heads-up — leaving it empty might increase traffic-related AWS costs for very large tests, since resources won’t necessarily be deployed in the same Availability Zone.
+提醒：留空后资源不一定部署在同一可用区，超大规模测试的流量相关 AWS 费用可能上升。
 
-### Why does the agent fail with a 501 error against Mattermost servers older than v11.0.1?
+### 为什么对 v11.0.1 之前的 Mattermost 服务端，agent 会报 501 错误？
 
-Starting with load-test-ng **v1.30.0**, the tool uses the `GetClientConfig` API endpoint, which changed in Mattermost **v11.0.1** (the `format` parameter was deprecated). Running load-test-ng v1.30.0 or later against a Mattermost server older than v11.0.1 will result in a 501 error.
+自 load-test-ng **v1.30.0** 起，工具使用 `GetClientConfig` API 端点，而该端点在 Mattermost **v11.0.1** 发生变更（`format` 参数被废弃）。用 v1.30.0 及以上版本压测 v11.0.1 之前的服务端会返回 501。
 
-If you are running a Mattermost server older than v11.0.1, use load-test-ng **v1.29.0** or earlier, which calls the legacy client config API using `format=old` and is compatible with pre-v11 servers.
+若你的 Mattermost 服务端低于 v11.0.1，请使用 load-test-ng **v1.29.0** 或更早版本——它使用带 `format=old` 的旧版 client config API，兼容 v11 之前的服务端。
 
-**Note:** Older load-test-ng versions may not include the latest fixes or features. Review the [changelog](https://github.com/mattermost/mattermost-load-test-ng/releases) for your selected version to understand any potential limitations.
+**注意**：旧版 load-test-ng 可能缺少最新修复与功能。请查阅所选版本的 [changelog](https://github.com/mattermost/mattermost-load-test-ng/releases) 了解潜在限制。
