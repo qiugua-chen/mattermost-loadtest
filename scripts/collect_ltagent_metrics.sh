@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# =============================================================================
+# collect_ltagent_metrics.sh —— ltagent 内嵌指标服务的周期采集器
+#
+# 用法: collect_ltagent_metrics.sh <输出目录> <目标用户数> [指标地址=http://127.0.0.1:4001]
+#
+# 每秒抓取一次 ltagent 的 /status 与 /metrics（Prometheus 文本格式），
+# 汇总为时序 CSV（ltagent-status.csv），列包括：
+#   epoch, 目标/实际用户数, 压测错误数, HTTP 请求/错误/超时数,
+#   WS 连接数, WS posted 事件数, WS 丢事件数
+# 该 CSV 是就绪门控（lt_wait_action_ready）与事后核对的数据源。
+# 多 agent 同机部署时，按 LT_METRICS_ADDR 端口逐实例各起一个本采集器。
+# =============================================================================
 
 set -u
 

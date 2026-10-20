@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# =============================================================================
+# summarize_http_perf.py —— nginx-perf 访问日志的 HTTP 性能汇总器
+#
+# 解析 nginx-perf 竖线分隔格式的 access log，输出：
+#   请求总量、吞吐量(QPS)、响应码分布、request_time / upstream_time 的
+#   分位数（P50/P90/P95/P99/Max），支持按 URI 路径 + HTTP 方法过滤。
+# 通常由 summarize_http_perf.sh 包装调用，也可独立使用：
+#   python3 summarize_http_perf.py <access.log> <窗口秒数> [URI过滤] [方法过滤]
+# =============================================================================
 
 import collections
 import datetime

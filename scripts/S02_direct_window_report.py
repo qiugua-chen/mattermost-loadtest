@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
-"""Summarize the steady-state window of one S02 Direct Channel run.
+"""S02 单聊场景"稳态窗口"报告生成器。
 
-Usage: python3 S02_direct_window_report.py RUN_DIR START_EPOCH [DURATION] [USERS] [DRAIN_SECONDS]
-START_EPOCH must be recorded after all users have authenticated and before
-CreateDirectPost is released. The access log format is the existing nginx-perf
-pipe-delimited format (timestamp|method|uri|status|...|request_time|upstream_time|bytes).
+对一次 S02 Direct Channel 压测运行的稳态窗口做汇总统计：
+按 nginx-perf 访问日志统计窗口内 POST /posts 的发送量、响应码分布、
+request_time / upstream_time 分位数，并核对 ltagent 状态，判定窗口有效性。
+
+用法: python3 S02_direct_window_report.py RUN_DIR START_EPOCH [DURATION] [USERS] [DRAIN_SECONDS]
+  RUN_DIR       运行目录（需含 ltagent-status.csv 与 http-access.log）
+  START_EPOCH   稳态窗口起点（Unix 秒）。必须在全部用户完成登录之后、
+                CreateDirectPost 放行之前记录（即门控放行的时刻）
+  DURATION      窗口时长秒数，默认 300
+  USERS         压测用户数，默认 100
+  DRAIN_SECONDS 收尾缓冲秒数，默认 0
+
+访问日志格式为 nginx-perf 的竖线分隔格式：
+  timestamp|method|uri|status|...|request_time|upstream_time|bytes
 """
 
 import csv

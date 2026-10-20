@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Assign Mattermost load-test users to one team and one channel.
+"""将压测用户批量加入指定团队（team）和频道（channel）。
 
-Input format is the mattermost-load-test-ng credential format:
+输入文件为 mattermost-load-test-ng 的凭据格式（每行一条）：
 
     username password
 
-The password is never written to the result log. Admin authentication is read
-from MM_TOKEN (or --token-env). The script is idempotent: memberships that
-already exist are verified and retained.
+密码只用于逐用户登录换取 token，绝不写入结果日志。
+管理员鉴权从环境变量 MM_TOKEN 读取（或用 --token-env 指定其他变量名）。
+脚本是幂等的：已存在的成员关系会被校验并保留，可安全重复执行。
+通常在 mattermost_prepare_users.py 建号之后执行，构成"建号->入团->入频道"的用户工程闭环。
 """
 
 from __future__ import annotations

@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Create deterministic Mattermost load-test users and write an ltagent credential file.
+"""批量创建确定性命名的压测用户，并生成 ltagent 凭据文件。
 
-Secrets are read from environment variables and are never written to the result log.
-The credential output intentionally contains plaintext passwords because that is the
-format required by mattermost-load-test-ng; protect it with mode 0600.
+命名规则为 <前缀><5位数字>（如 ltuser00001），与 simplecontroller 的
+确定性配对/分组逻辑（createDirectPost / createGroupPost）配套——
+账号必须按此规则命名，消息场景才能正确配对。
+
+敏感信息一律从环境变量读取，绝不写入结果日志。
+凭据输出文件按 mattermost-load-test-ng 要求含明文密码，务必以 0600 权限保管，
+且该文件已被 .gitignore 排除，禁止提交入库。
 """
 
 from __future__ import annotations

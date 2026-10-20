@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+# =============================================================================
+# summarize_message_metrics.sh —— 消息场景收发核对汇总
+#
+# 用法: summarize_message_metrics.sh <nginx访问日志> <ltagent-status.csv> <测试秒数> <单消息预期接收人数>
+#
+# 交叉核对两侧数据，给出消息收发一致性结论：
+#   发送侧：nginx access log 中 POST /api/v4/posts 的尝试数/成功数
+#   接收侧：ltagent /metrics 中 WS posted 事件累计值（应 ≈ 成功数 × 预期接收人数）
+# 用于判定消息压测是否存在丢失、重复或统计失真。
+# =============================================================================
 
 set -euo pipefail
 

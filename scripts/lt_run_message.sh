@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+# =============================================================================
+# lt_run_message.sh —— 消息场景一键执行入口（S02/S03 系列）
+#
+# 用法: source 本文件后调用  lt_run_message <用户数> <正式压测秒数>
+# 示例: lt_run_message 100 300
+#
+# 依次加载 runtime/env/ 下的 loadtest.env / monitoring.env / target.env
+# 三层环境定义，再按场景类型分派到 loadtest-stage-functions.sh 中的
+# 受控执行函数（含就绪门控与全程监控采集）。
+# =============================================================================
 
 run_message_main() {
   local message_users="${1:-}"

@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# summarize_receiver_latency.sh —— 端到端接收延迟汇总
+#
+# 用法: summarize_receiver_latency.sh <receiver-latency.csv>
+# 输入为 simplecontroller recordReceiverLatency 落盘的 CSV
+# （epoch,controller_id,channel_id,post_id,latency_ms），
+# 输出样本数与 平均/最小/P50/P90/P95/P99/最大 延迟（毫秒）。
 set -euo pipefail
 
 file="${1:?用法：summarize_receiver_latency.sh receiver-latency.csv}"

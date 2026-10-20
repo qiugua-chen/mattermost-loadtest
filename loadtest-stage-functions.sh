@@ -1,4 +1,34 @@
+#!/usr/bin/env bash
+# =============================================================================
+# loadtest-stage-functions.sh —— 压测"舞台化"执行函数库（二开核心编排层）
+#
+# 定位：不是独立执行的脚本，而是被各场景入口脚本 source 的函数库。
+# 把一次压测运行编排为标准流水线：
+#   生成运行目录 -> 渲染代理配置 -> 启动 nginx-perf 代理 -> 拉起 ltagent
+#   -> 挂指标/pidstat/sar 采集 -> 等待登录与 WS 就绪（门控）
+#   -> 放行正式窗口 -> 收尾汇总（HTTP/发消息/窗口报告）
+#
+# 使用前需先定义的环境变量（通常由 runtime/env/*.env 提供）：
+#   RESULTS_ROOT              结果根目录
+#   LT_ROOT                   工具根目录（本仓库部署路径）
+#   PROXY_SERVER_URL          经 nginx-perf 代理的 HTTP 地址
+#   PROXY_WEBSOCKET_URL       经 nginx-perf 代理的 WS 地址
+#   PERF_PROXY_ROOT           nginx-perf 安装根目录（含 logs/）
+#   LT_USER_PREFIX            压测账号前缀（如 ltuser）
+#   LT_USER_OFFSET            压测账号起始编号
+#
+# 函数清单：
+#   lt_wait_action_ready            就绪门控：等到 在线数+WS连接数 双达标
+#   lt_run_monitored_scenario_gated 通用受控场景执行（核心流水线）
+#   lt_run_direct_gated             S02 单聊场景入口
+#   lt_run_group_gated              S03 群聊场景入口
+#   lt_channel_group_prepare        S03B 频道群：管理员 API 建专用频道
+#   lt_run_channel_group_gated      S03B 频道群场景入口（N 发 M 收）
+# =============================================================================
 
+# lt_wait_action_ready <运行目录> <目标用户数> [超时秒数=180]
+# 轮询 ltagent /status 采集 CSV 的最新一行，直到 actual_users >= 目标
+# 且 ws_connections >= 目标（双达标才认为稳态就绪），超时返回 1。
 lt_wait_action_ready() {
   local run_dir="$1"
   local users="$2"
@@ -26,6 +56,15 @@ lt_wait_action_ready() {
   return 1
 }
 
+# lt_run_monitored_scenario_gated <场景名> <用户数> <正式窗口秒数> <基础配置> <控制器配置> <预期接收方数>
+# 通用受控压测流水线，所有场景入口最终都汇聚到这里：
+#   1. 生成带时间戳的运行目录并导出 CURRENT_* 环境变量
+#   2. 用 jq 把连接配置改写为指向 nginx-perf 代理（全链路 HTTP 采集）
+#   3. 设置登录限流/重试默认值、动作门控信号文件 LT_ACTION_START_FILE
+#   4. 启动代理、拉起 ltagent（总时长 = 预热上限 + 正式窗口 + 收尾缓冲）
+#   5. 并行挂接：指标采集器、pidstat（CPU/内存/IO）、sar（网络/TCP）
+#   6. 门控等待就绪 -> touch 信号文件放行正式动作 -> 计时 -> 停agent
+#   7. 归档 access/error 日志并生成三份汇总（HTTP/发消息/窗口报告）
 lt_run_monitored_scenario_gated() {
   local scenario="$1"
   local users="$2"
@@ -188,6 +227,8 @@ touch "$LT_ACTION_START_FILE"
   echo "控制台日志=$CURRENT_RUN_DIR/console.log"
 }
 
+# lt_run_direct_gated <偶数用户数> <正式压测秒数>
+# S02 单聊场景入口：用户数必须为偶数（1<->2 确定性配对）。
 lt_run_direct_gated() {
   local users="$1"
   local duration="$2"
@@ -213,6 +254,8 @@ lt_run_direct_gated() {
     "$receivers"
 }
 
+# lt_run_group_gated <用户数> <正式压测秒数> [单消息预期接收事件数]
+# S03 群聊场景入口：优先使用 GROUP_* 配置，兼容回退到 MESSAGE_* 配置。
 lt_run_group_gated() {
   local users="$1"
   local duration="$2"
@@ -250,6 +293,11 @@ lt_run_group_gated() {
 }
 
 
+# lt_channel_group_prepare <频道人数>
+# S03B 频道群前置准备：用管理员账号走 REST API 登录 -> 查 team_id
+# -> 创建专用公开频道，导出 LT_CHANNEL_GROUP_CHANNEL_ID/NAME。
+# 依赖环境变量：LT_MM_SERVER_URL / LT_CHANNEL_GROUP_TEAM_NAME /
+#               LT_MM_ADMIN_USERNAME / LT_MM_ADMIN_PASSWORD
 lt_channel_group_prepare() {
   local channel_members="$1"
 
@@ -307,6 +355,12 @@ lt_channel_group_prepare() {
   echo "频道群初始化完成：channel_name=${channel_name} channel_id=${channel_id}"
 }
 
+# lt_run_channel_group_gated <在线用户数> <正式压测秒数> <频道人数> <发消息用户数>
+# S03B 频道群场景入口（N 发 M 收大群广播模型）。
+# 约束：在线用户数 >= 频道人数（所有成员须在线才能考核接收）；
+#       发消息用户数 <= 频道人数。
+# 设 LT_CHANNEL_GROUP_USE_EXISTING_CHANNEL=1 可复用已有频道（跳过创建）。
+# 示例：lt_run_channel_group_gated 100 300 100 5
 lt_run_channel_group_gated() {
   local users="$1"
   local duration="$2"
