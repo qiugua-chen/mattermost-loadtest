@@ -17,10 +17,12 @@ const (
 )
 
 type UserEntityMetrics struct {
-	HTTPRequestTimes     prometheus.Histogram
-	HTTPErrors           *prometheus.CounterVec
-	HTTPTimeouts         *prometheus.CounterVec
-	WebSocketConnections prometheus.Gauge
+	HTTPRequestTimes      prometheus.Histogram
+	HTTPErrors            *prometheus.CounterVec
+	HTTPTimeouts          *prometheus.CounterVec
+	WebSocketConnections  prometheus.Gauge
+	WebSocketEvents       *prometheus.CounterVec
+	WebSocketMissedEvents prometheus.Counter
 }
 
 type Metrics struct {
@@ -65,6 +67,27 @@ func NewMetrics() *Metrics {
 		Help:      "The total number of active WebSocket connections.",
 	})
 	m.registry.MustRegister(m.ueMetrics.WebSocketConnections)
+
+	m.ueMetrics.WebSocketEvents = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemWS,
+			Name:      "events_received_total",
+			Help:      "The total number of received WebSocket events.",
+		},
+		[]string{"event"},
+	)
+	m.registry.MustRegister(m.ueMetrics.WebSocketEvents)
+
+	m.ueMetrics.WebSocketMissedEvents = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: metricsSubSystemWS,
+			Name:      "missed_events_total",
+			Help:      "The total number of detected WebSocket sequence gaps.",
+		},
+	)
+	m.registry.MustRegister(m.ueMetrics.WebSocketMissedEvents)
 
 	return &m
 }

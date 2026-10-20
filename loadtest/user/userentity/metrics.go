@@ -21,6 +21,20 @@ func (ue *UserEntity) decWebSocketConnections() {
 	}
 }
 
+func (ue *UserEntity) incWebSocketEvent(event string) {
+	if ue.metrics != nil {
+		ue.metrics.WebSocketEvents.
+			WithLabelValues(event).
+			Inc()
+	}
+}
+
+func (ue *UserEntity) incWebSocketMissedEvent() {
+	if ue.metrics != nil {
+		ue.metrics.WebSocketMissedEvents.Inc()
+	}
+}
+
 func (ue *UserEntity) incHTTPErrors(path, method string, status int) {
 	if ue.metrics != nil {
 		ue.metrics.HTTPErrors.With(prometheus.Labels{

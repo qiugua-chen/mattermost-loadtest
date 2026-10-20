@@ -101,6 +101,8 @@ func (ue *UserEntity) handlePostEvent(ev *model.WebSocketEvent) error {
 // sync with the server. Any response to the event should be made by handling
 // the same event at the upper layer (controller).
 func (ue *UserEntity) wsEventHandler(ev *model.WebSocketEvent) error {
+	ue.incWebSocketEvent(string(ev.EventType()))
+
 	if ev.EventType() == model.WebsocketEventHello {
 		if connID, ok := ev.GetData()["connection_id"].(string); ok {
 			// If we already have a connectionId present, and server sends a different one,
@@ -118,6 +120,7 @@ func (ue *UserEntity) wsEventHandler(ev *model.WebSocketEvent) error {
 	// Now we check for sequence number, and if it does not match,
 	// we just disconnect and reconnect.
 	if ev.GetSequence() != ue.wsServerSeq {
+		ue.incWebSocketMissedEvent()
 		mlog.Warn("Missed websocket event", mlog.Int("got", ev.GetSequence()), mlog.Int("expected", ue.wsServerSeq))
 		return errSeqMismatch
 	}

@@ -4,7 +4,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/mattermost/mattermost-load-test-ng/performance"
+	"net"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/mattermost/mattermost-load-test-ng/api"
@@ -108,7 +113,8 @@ func RunLoadTestCmdF(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	newC, err := api.NewControllerWrapper(config, ucConfig, userOffset, userPrefix, nil, false)
+	metrics := performance.NewMetrics()
+	newC, err := api.NewControllerWrapper(config, ucConfig, userOffset, userPrefix, metrics, false)
 	if err != nil {
 		return fmt.Errorf("error while creating new controller: %w", err)
 	}
@@ -116,6 +122,47 @@ func RunLoadTestCmdF(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("error while initializing loadtest: %w", err)
 	}
+
+	metricsAddr := os.Getenv("LT_METRICS_ADDR")
+	if metricsAddr == "" {
+		metricsAddr = "127.0.0.1:4001"
+	}
+
+	metricsListener, err := net.Listen("tcp", metricsAddr)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to listen on metrics address %s: %w",
+			metricsAddr,
+			err,
+		)
+	}
+
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", metrics.Handler())
+	metricsMux.HandleFunc(
+		"/status",
+		func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(lt.Status())
+		},
+	)
+
+	metricsServer := &http.Server{
+		Handler: metricsMux,
+	}
+
+	go func() {
+		serveErr := metricsServer.Serve(metricsListener)
+
+		if serveErr != nil && serveErr != http.ErrServerClosed {
+			mlog.Error(
+				"metrics server stopped",
+				mlog.Err(serveErr),
+			)
+		}
+	}()
+
+	defer metricsServer.Close()
 
 	if controllerType == loadtest.UserControllerGenerative {
 		return runGenLoadtest(lt, config.UsersConfiguration.InitialActiveUsers)
@@ -135,6 +182,7 @@ func RunLoadTestCmdF(cmd *cobra.Command, args []string) error {
 	}
 	time.Sleep(time.Duration(durationSec) * time.Second)
 	err = lt.Stop()
+	time.Sleep(3 * time.Second)
 	mlog.Info("loadtest done", mlog.String("elapsed", time.Since(start).String()))
 
 	return err
