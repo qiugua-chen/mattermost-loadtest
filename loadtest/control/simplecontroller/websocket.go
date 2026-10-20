@@ -16,6 +16,7 @@ import (
 func (c *SimpleController) wsEventHandler(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for ev := range c.user.Events() {
+		c.recordReceiverLatency(ev)
 		switch ev.EventType() {
 		case model.WebsocketEventUserUpdated:
 			// probably do something interesting ?

@@ -18,6 +18,7 @@ import (
 // SimpleController is a very basic implementation of a controller.
 // Currently, it just performs a pre-defined set of actions in a loop.
 type SimpleController struct {
+	groupChannelId     string
 	id                 int
 	user               user.User
 	status             chan<- control.UserStatus
@@ -29,6 +30,9 @@ type SimpleController struct {
 	stoppedChan        chan struct{}   // blocks until controller cleans up everything
 	connectedFlag      int32           // indicates that the controller is connected
 	wg                 *sync.WaitGroup // to keep the track of every goroutine created by the controller
+
+	// directChannelID caches the deterministic DM channel used by CreateDirectPost.
+	directChannelID string
 }
 
 // New creates and initializes a new SimpleController with given parameters.
@@ -184,17 +188,20 @@ func (c *SimpleController) sendStopStatus() {
 func (c *SimpleController) createActions(definitions []actionDefinition) error {
 	var actions []*UserAction
 	c.actionMap = map[string]control.UserAction{
-		"AddReaction":          control.AddReaction,
-		"CreateDirectChannel":  control.CreateDirectChannel,
-		"CreateGroupChannel":   control.CreateGroupChannel,
-		"CreatePost":           control.CreatePost,
-		"CreatePostReply":      control.CreatePostReply,
-		"CreatePrivateChannel": control.CreatePrivateChannel,
-		"CreatePublicChannel":  control.CreatePublicChannel,
-		"GetPinnedPosts":       control.GetPinnedPosts,
-		"JoinChannel":          control.JoinChannel,
-		"JoinTeam":             control.JoinTeam,
-		"LeaveChannel":         control.LeaveChannel,
+		"AddReaction":            control.AddReaction,
+		"CreateDirectChannel":    control.CreateDirectChannel,
+		"CreateDirectPost":       c.createDirectPost,
+		"CreateGroupPost":        c.createGroupPost,
+		"CreateChannelGroupPost": c.createChannelGroupPost,
+		"CreateGroupChannel":     control.CreateGroupChannel,
+		"CreatePost":             control.CreatePost,
+		"CreatePostReply":        control.CreatePostReply,
+		"CreatePrivateChannel":   control.CreatePrivateChannel,
+		"CreatePublicChannel":    control.CreatePublicChannel,
+		"GetPinnedPosts":         control.GetPinnedPosts,
+		"JoinChannel":            control.JoinChannel,
+		"JoinTeam":               control.JoinTeam,
+		"LeaveChannel":           control.LeaveChannel,
 		"Login": func(u user.User) control.UserActionResponse {
 			resp := control.Login(u)
 			if resp.Err != nil {
