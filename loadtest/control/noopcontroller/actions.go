@@ -106,7 +106,7 @@ func (c *NoopController) joinChannel(u user.User) control.UserActionResponse {
 	if err != nil {
 		return control.UserActionResponse{Err: control.NewUserError(err)}
 	} else if team == nil {
-		return control.UserActionResponse{Err: control.NewUserError(errors.New("current team should be set"))}
+		return control.UserActionResponse{Info: "current team is not set; skip joining channel for pre-provisioned user"}
 	}
 
 	if err := u.GetPublicChannelsForTeam(team.Id, 0, 100); err != nil {

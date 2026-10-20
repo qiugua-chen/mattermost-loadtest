@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mattermost/mattermost-load-test-ng/loadtest/store"
@@ -31,12 +33,79 @@ type UserActionResponse struct {
 
 var ErrInjectActionQueueFull = errors.New("inject action queue full")
 
+var loginLimiter struct {
+	once  sync.Once
+	slots chan struct{}
+}
+
+func envInt(name string, defaultValue int) int {
+	value := os.Getenv(name)
+	if value == "" {
+		return defaultValue
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return defaultValue
+	}
+
+	return parsed
+}
+
+func acquireLoginSlot() func() {
+	loginConcurrency := envInt("LT_LOGIN_CONCURRENCY", 0)
+	if loginConcurrency <= 0 {
+		return func() {}
+	}
+
+	loginLimiter.once.Do(func() {
+		loginLimiter.slots = make(chan struct{}, loginConcurrency)
+	})
+
+	loginLimiter.slots <- struct{}{}
+
+	return func() {
+		<-loginLimiter.slots
+	}
+}
+
+func withLoginRetry(action func() error) error {
+	retries := envInt("LT_LOGIN_RETRIES", 0)
+	if retries < 0 {
+		retries = 0
+	}
+
+	retrySleepMs := envInt("LT_LOGIN_RETRY_SLEEP_MS", 1000)
+	if retrySleepMs < 0 {
+		retrySleepMs = 1000
+	}
+
+	var err error
+	for attempt := 0; attempt <= retries; attempt++ {
+		err = action()
+		if err == nil {
+			return nil
+		}
+
+		if attempt < retries {
+			time.Sleep(time.Duration(retrySleepMs) * time.Millisecond)
+		}
+	}
+
+	return err
+}
+
 // UserAction is a function that simulates a specific behaviour for the provided
 // user.User. It returns a UserActionResponse.
 type UserAction func(user.User) UserActionResponse
 
 // SignUp signs up the given user to the server.
 func SignUp(u user.User) UserActionResponse {
+	if os.Getenv("LT_SKIP_SIGNUP") == "true" {
+		return UserActionResponse{
+			Info: "SignUp skipped because LT_SKIP_SIGNUP=true",
+		}
+	}
 	if u.Store().Id() != "" {
 		return UserActionResponse{Info: "user already signed up"}
 	}
@@ -58,7 +127,12 @@ func SignUp(u user.User) UserActionResponse {
 // Login authenticates the user with the server and fetches teams, users and
 // channels that are related with the user.
 func Login(u user.User) UserActionResponse {
-	err := u.Login()
+	releaseLoginSlot := acquireLoginSlot()
+	defer releaseLoginSlot()
+
+	err := withLoginRetry(func() error {
+		return u.Login()
+	})
 	if err != nil {
 		return UserActionResponse{Err: NewUserError(err)}
 	}
@@ -799,7 +873,7 @@ func Reload(u user.User) UserActionResponse {
 	}
 
 	err = u.GetWebappPlugins()
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "Plugins have been disabled") {
 		return UserActionResponse{Err: NewUserError(err)}
 	}
 
@@ -808,7 +882,7 @@ func Reload(u user.User) UserActionResponse {
 		return UserActionResponse{Err: NewUserError(err)}
 	}
 
-	_, err = u.GetTeamsForUser(userId)
+	teamIds, err := u.GetTeamsForUser(userId)
 	if err != nil {
 		return UserActionResponse{Err: NewUserError(err)}
 	}
@@ -818,6 +892,8 @@ func Reload(u user.User) UserActionResponse {
 		return UserActionResponse{Err: NewUserError(err)}
 	} else if team != nil {
 		teamId = team.Id
+	} else if len(teamIds) > 0 {
+		teamId = teamIds[0]
 	}
 
 	err = u.GetTeamMembersForUser(u.Store().Id())
