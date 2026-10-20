@@ -1,4 +1,4 @@
-# Mattermost IM 性能测试扩展工具套件（mattermost-load-test-ng-ext）
+# Mattermost IM 性能测试扩展工具套件（mattermost-loadtest）
 
 > 基于官方 [mattermost-load-test-ng](https://github.com/mattermost/mattermost-load-test-ng) 的二次开发扩展版，
 > 面向真实企业 IM 环境（预置账号、免注册、免加入频道）的**登录 / 单聊 / 群聊 / 频道群发**全链路压测与**端到端消息延迟度量**。
@@ -29,6 +29,7 @@
 | **预置账号适配** | 免注册、免加入团队/频道的容错降级（插件禁用、无当前团队不再判失败） | `loadtest/control/actions.go`、`noopcontroller` |
 | **舞台化执行脚本** | 就绪门控（实际在线数 + WS 连接数双达标才计时）、场景化一键执行、结果自动汇总 | `loadtest-stage-functions.sh`、`scripts/` |
 | **用户工程脚本** | 批量预置用户、幂等分配团队/频道成员（凭据走环境变量，不落盘） | `scripts/mattermost_*.py` |
+| **可观测性子系统** | nginx 反向代理全链路 HTTP 采集（request_time/upstream_time 落盘）+ 环境定义模板 + 三层监控模型 | `monitoring/` |
 
 ## 环境变量一览
 
@@ -127,9 +128,36 @@ scripts/
   S02_direct_window_report.py      # 单聊时间窗口报告
 config/formal/                     # 正式场景参数样例（1200 用户级）
 config/*.sample.json               # 冒烟/agent 配置样例（复制后填真实值）
+monitoring/                        # 可观测性子系统
+  nginx-perf/nginx.conf.sample     #   nginx 反向代理全链路采集配置（perf 日志格式）
+  env/*.env.sample                 #   环境定义模板（loadtest/monitoring/target/channel-group）
+  README.md                        #   三层监控模型与对接说明
 docs/EXT-CHANGES.md                # 逐文件改造清单
 docs/REUSE.md                      # 跨环境/跨产品复用指南
 ```
+
+## 可观测性（监控子系统）
+
+本套件采用**三层监控模型**，压测数据从三个层面交叉核对，任何一层异常都能被发现：
+
+| 层 | 数据源 | 采集方式 | 回答的问题 |
+|---|---|---|---|
+| **客户端层** | ltagent 内嵌 `/metrics` + `/status` | `scripts/collect_ltagent_metrics.sh` 周期抓取为时序 CSV | 压测侧发出了多少请求？WS 连接是否达标？有没有丢事件？ |
+| **链路层** | nginx-perf 代理 access log | `monitoring/nginx-perf/` 反向代理，所有压测 HTTP 流经代理落盘 | 服务端实际收到多少？request_time / upstream_time 分布如何？ |
+| **业务层** | 端到端接收延迟 CSV | 消息体内嵌 `send_unix_nano`，接收侧 WS 事件实时解析 | 用户视角的消息收发延迟是多少？ |
+
+快速启用链路层采集：
+
+```bash
+cp monitoring/nginx-perf/nginx.conf.sample monitoring/nginx-perf/nginx.conf
+# 编辑 nginx.conf：把 mattermost.example.com 替换为真实 Mattermost 地址
+cp monitoring/env/loadtest.env.sample  runtime/env/loadtest.env   # 按注释填值
+```
+
+详细说明见 [monitoring/README.md](monitoring/README.md)。
+
+> 服务端侧监控（Prometheus + Grafana 部署、Mattermost 主机 exporter）属基础设施范畴，
+> 不包含在本仓库内；`monitoring/README.md` 给出了对接约定。
 
 ## 许可证
 
