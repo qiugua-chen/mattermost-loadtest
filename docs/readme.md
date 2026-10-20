@@ -1,53 +1,60 @@
-# Documentation
+# 文档索引
 
-## Where do I start?
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/readme.md
+>
+> **扩展版读者提示**：如果你使用的是本扩展仓库（mattermost-loadtest），
+> 建议优先阅读根目录 [README.md](../README.md)、[EXT-CHANGES.md](EXT-CHANGES.md)
+> 与 [REUSE.md](REUSE.md) 三份中文文档；本目录其余文档为上游参考资料。
 
-The documentation here is comprehensive, so it may be hard for someone new to know where to start reading to understand how the tool works or how it is architected. The best starting point depends on what your end goal is:
+## 从哪里开始？
 
-- If you are interested in using the tool to run some tests, there are a few documents you need to read, roughly in the following order:
-    - [How-to guide](load-test-how-to-use.md): this guide is a great overview of how things work, as well as tips and tricks that will make your life easier. It also links to multiple other documents, which you can follow to broaden your understanding. Read it completely first before running any tests!
-    - [How to run a load-test locally](local_loadtest.md): a specific guide to start running load-tests locally in your computer, no AWS needed. Running some local tests will teach you how everything fits together.
-    - [How to run a load-test in Terraform](terraform_loadtest.md): a more advanced guide to deploy a cluster to AWS to run a more powerful load-test. This is the recommended way to run production-ready tests.
-    - [Generate and compare reports](compare.md): once the test is executed, here's how you can generate a report you can use for analyzing the results, as well as for comparing it against a second test to generate a diff view and some useful graphs.
-    - [FAQ](faq.md): whenever you find yourself wondering something about the tool, check here first in case other people have already asked.
-- If you are more interested in learning how the tool is architected, or how to improve it, then you should start here:
-    - [Architecture](loadtest_system.md): a birds-eye view of what the different components are and how they connect to each other.
-    - [Implementation](implementation.md): an overview, both high- and low-level, of how the different components are implemented.
-    - [Coverage](coverage.md): if you have implemented a new feature in the server, here's a guide on how to modify the simulcontroller to add coverage for it.
-    - [Developer's workflow](developing.md): quick recipes to get you started in developing for the tool.
-    
-## Reference documentation
+这里的文档体系比较庞大，新读者可能不知道从哪读起才能理解工具的工作方式与架构。
+最佳起点取决于你的目标：
 
-### Configuration
+- 如果你想**用这个工具跑测试**，建议按以下顺序阅读：
+    - [使用指南](load-test-how-to-use.md)：全面概述工具的工作方式以及实用技巧，并链向多份扩展文档。**跑任何测试之前请先完整读完它！**
+    - [本地运行负载测试](local_loadtest.md)：在自己的电脑上（不依赖 AWS）跑负载测试的具体指南。本地跑几次能帮你理解各组件如何协同。
+    - [用 Terraform 运行负载测试](terraform_loadtest.md)：更进阶的指南，在 AWS 上部署集群以执行更大规模的压测，是生产级测试的推荐方式。
+    - [生成与对比报告](compare.md)：测试执行完后，如何生成分析报告、如何与另一轮测试做 diff 对比并出图。
+    - [FAQ](faq.md)：对工具有疑问时先查这里，可能别人已经问过了。
+- 如果你更想**了解工具架构或参与改进**，从这里开始：
+    - [架构](loadtest_system.md)：鸟瞰各组件及其连接关系。
+    - [实现](implementation.md)：从高层到细节介绍各组件的实现方式。
+    - [覆盖率](coverage.md)：服务端实现了新特性后，如何修改 simulcontroller 为其补充压测覆盖。
+    - [开发者工作流](developing.md)：参与工具开发的速查手册。
 
-Users of the tool can configure pretty much everything: the behaviour of the simulated users, how to set up the cluster, the metrics and thresholds for how the coordinator measures the stability of the system, and even AWS-specific settings, to name a few examples.
+## 参考文档
 
-This is great for accommodating all of the use-cases we need to cover, but it also makes the configuration quite complex. To try to alleviate this pain, there's extensive documentation on each and every configuration knob you can tweak (and if you see something's missing, please feel free to open an issue or a PR). Here's a list of all the documents explaining each of the files in the `config/` directory:
+### 配置
 
-- [Generic configuration](config/config.md): Settings to configure what controller to use (see below for more info), how the controllers will connect to your Mattermost server, how many users each controller has and how active they are, as well as the initial data you want to create.
-- Controllers configuration: settings for each different controller implemented in the tool:
-    - [simulative controller](config/simulcontroller.md): the perfect controller for simulating a real user, with coverage of the most frequent actions and fine-tuned probabilities to mimic an actual server.
-    - [generative controller](config/gencontroller.md): the controller you'll use whenever you need to generate lots of data for later use. The behaviour of the users in this controller is not realistic (hopefully real users don't write 10+ posts per second), but it's optimized for generating data with speed and performance in mind.
-    - [simple controller](config/simplecontroller.md): if you need to run a specific set of actions in a loop, and you want to easily configure which ones and with which frequency, then this is your controller.
-- [Deployer configuration](config/deployer.md): Settings to control the cluster deployed to AWS through Terraform, as well as AWS-specific configurations you may need to tweak to match you usual AWS workflow.
-- [Coordinator configuration](config/coordinator.md): Settings to tweak how the coordinator behaves, such as the maximum number of users simulated or the configuration for the type of test to run (whether bounded or unbounded, and in case of unbounded, how it is controlled).
-- [Comparison configuration](config/comparison.md): Settings to control the comparison process. See the [Advanced workflows](#advanced-workflows) for more information.
+工具几乎一切都可配置：虚拟用户行为、集群搭建方式、coordinator 衡量系统稳定性的指标与阈值、甚至 AWS 专属设置等等。
 
-### Components
+这带来了灵活性，也让配置体系相当复杂。为降低门槛，每个可调项都有详尽文档（如发现缺漏欢迎提 issue 或 PR）。以下是 `config/` 目录下各配置文件的说明文档：
 
-Specific documentation defining the main components and how they interact with each other:
+- [通用配置](config/config.md)：选用哪种 controller（见下文）、controller 如何连接 Mattermost 服务器、各 controller 的用户规模与活跃度、初始数据灌注等。
+- 各类 Controller 的配置：
+    - [simulative controller](config/simulcontroller.md)：最贴近真实用户的控制器，覆盖高频动作，动作概率经过精细调校。
+    - [generative controller](config/gencontroller.md)：需要快速生成大量数据时使用。该控制器下用户行为并不真实（真实用户不会每秒发 10+ 帖），但为造数速度做了优化。
+    - [simple controller](config/simplecontroller.md)：需要按自定义的动作集与频率循环执行时使用。**本扩展版的消息场景（单聊/群聊/频道群发）均基于此控制器**。
+- [Deployer 配置](config/deployer.md)：控制经 Terraform 部署到 AWS 的集群及 AWS 专属设置。
+- [Coordinator 配置](config/coordinator.md)：调整 coordinator 行为，如最大模拟用户数、测试类型（bounded / unbounded 及其控制方式）。
+- [Comparison 配置](config/comparison.md)：控制对比流程，详见下文「进阶工作流」。
 
-- [Controllers](controllers.md): what a controller is, as well as a list of the different implementations included.
-- [Coordinator](coordinator.md): a definition of the coordinator component and how it works.
+### 组件
 
-## Advanced Workflows
+描述主要组件及其交互方式的专题文档：
 
-Once you have familiarized yourself with the tool, and after you have successfully run at least a couple of tests, there are a few advanced guides that may be useful for you:
+- [Controllers](controllers.md)：什么是 controller，以及各实现的清单。
+- [Coordinator](coordinator.md)：coordinator 组件的定义与工作方式。
 
-- [Running an automated load-test comparison](comparison.md): a workflow specifically designed for when you need to compare two different versions of Mattermost while maintaining the rest of the variables fixed. This is what the Server team at Mattermost uses for the monthly release performance comparisons.
-- [Generating data](generating_data.md): for larger load-tests, you'll need larger datasets. This guide describes how you can use the gencontroller to create an arbitrary number of teams, channels, posts, reactions... to use as the starting point for future tests.
+## 进阶工作流
 
+熟悉工具并成功跑过几轮测试后，以下进阶指南可能有用：
 
-## Configuration samples
+- [自动化负载对比测试](comparison.md)：专为"固定其他变量、对比两个 Mattermost 版本性能"设计的工作流，Mattermost Server 团队的月度版本性能对比即采用此流程。
+- [数据生成](generating_data.md)：更大规模压测需要更大的数据集。本文介绍如何用 gencontroller 造出任意规模的团队、频道、帖子、表情回应等，作为后续测试的初始数据。
 
-We know that the configuration of the load-test tool can be overwhelming, specially to newcomers. We have some sets of config templates we actively use and maintain up-to-date in the [`examples/config` directory](../examples/config). Take a look at the files there to learn from real-world config files.
+## 配置样例
+
+我们深知负载测试工具的配置对新手并不友好。[`examples/config`](../examples/config) 目录中维护着一批正在使用的配置模板，可参考真实世界的配置文件学习。

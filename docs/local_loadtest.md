@@ -1,88 +1,96 @@
-# Running a load-test locally
+# 本地运行负载测试
 
-## Introduction
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/local_loadtest.md
 
-This guide describes how to run a load-test locally (and mostly manually).
-Doing this is particularly useful when testing changes to the load-test tool itself.
-It's also a great way to learn how the whole load-testing process works before trying with more advanced deployments.
+## 简介
 
-There are a few ways to run a load-test locally, in order of complexity:
+本文介绍如何在本地（以偏手动的方式）运行一次负载测试。
+这在验证负载测试工具自身的改动时特别有用，
+也是在尝试更高级部署形态之前、理解整个压测流程的最佳途径。
 
-- Run the `ltagent` command directly.
-- Run a load-test through the load-test agent API server `ltapi`.
-- Run a load-test through the [`coordinator`](coordinator.md).
+本地运行负载测试有三种方式，按复杂度递增：
 
-## Prerequisites
+- 直接运行 `ltagent` 命令。
+- 通过负载测试代理 API 服务 `ltapi` 运行。
+- 通过 [`coordinator`](coordinator.md) 运行。
 
-Before starting a new load-test, a newly created (and running) Mattermost instance with system admin credentials is required.
+## 前置条件
 
-### Clone the repository
+开始新的负载测试前，需要一个新部署的、正在运行的 Mattermost 实例，
+以及其系统管理员（system admin）凭据。
+
+### 克隆仓库
 
 ```sh
 git clone https://github.com/mattermost/mattermost-load-test-ng
 ```
 
-### Enter the source directory
+### 进入源码目录
 
 ```sh
 cd mattermost-load-test-ng
 ```
 
-### Copy and modify needed configuration files
+### 复制并修改所需的配置文件
 
-It's suggested to copy the required config files and edit them accordingly.
+建议先复制配置样例文件，再按需修改：
 
 ```sh
 cp config/config.sample.json config/config.json
 cp config/simplecontroller.sample.json config/simplecontroller.json
 ```
 
-The load-test config file is documented [here](config/config.md).
-The default [`UserController`](controllers.md) is the `SimpleController`. Its config file is documented [here](config/simplecontroller.md).
+负载测试配置文件的说明见[这里](config/config.md)。
+默认的 [`UserController`](controllers.md) 是 `SimpleController`，其配置说明见[这里](config/simplecontroller.md)。
 
-### Run the initialization
+### 执行初始化
 
 ```sh
 go run ./cmd/ltagent init
 ```
 
-Running this command will create initial teams and channels for the users to join on the target MM instance.
+该命令会在目标 Mattermost 实例上创建初始的团队和频道，供压测用户加入。
 
-#### Note
+#### 说明
 
-The `init` command generates data as configured by the `InstanceConfiguration` section. It does not pre-populate all the users.
-In fact, only 50 users are created and used to generate data. This value was chosen to maximize overall throughput.
+`init` 命令按 `InstanceConfiguration` 配置段生成数据，但**不会**预置全部用户——
+实际上只创建 50 个用户用于造数，该取值是为了最大化整体吞吐。
 
-## Running a basic load-test
+## 运行基础负载测试
 
-A new load-test can be started with the following command:
+用以下命令启动一轮新的负载测试：
 
 ```sh
 go run ./cmd/ltagent -n 10 -d 60
 ```
 
-This will start a load-test running the specified number of users (10) for 60 seconds.
+这会启动一个运行 10 个用户、持续 60 秒的负载测试。
 
-#### Note
+#### 说明
 
-Command line arguments take precedence over configuration settings.
+命令行参数的优先级高于配置文件。
 
-## Running a load-test through the load-test agent API server
+> **扩展版说明**：本扩展版中 `ltagent` 新增了内嵌指标服务，
+> 默认监听 `127.0.0.1:4001`（可用环境变量 `LT_METRICS_ADDR` 修改），
+> 暴露 `/metrics`（Prometheus 格式）与 `/status`（运行状态 JSON）两个端点。
 
-A more advanced way to run a load-test is to use the provided load-test agent API server.
+## 通过负载测试代理 API 服务运行
 
-### Start the API server
+更进阶的方式是使用工具自带的 load-test agent API server。
+
+### 启动 API 服务
 
 ```sh
 go run ./cmd/ltapi
 ```
 
-This will start the server and expose the HTTP API on port 4000 (default).
-Using a different terminal it's possible to issue commands to create and run a load-test agent:
+服务启动后默认在 4000 端口暴露 HTTP API。
+另开一个终端即可发送命令来创建和运行 load-test agent：
 
-### Create a new load-test agent
+### 创建新的 load-test agent
 
-To start a new load-test agent via API, the request structure should be in the form of:
+通过 API 创建 agent 时，请求体结构如下：
 
 ```json
 {
@@ -98,63 +106,67 @@ To start a new load-test agent via API, the request structure should be in the f
 }
 ```
 
-The API will create controller specific configuration from the request. However, if there is no controller configuration or errors while reading it from the request, the server will read the default controller configuration locally.
+API 会基于请求内容生成相应 controller 的配置。
+若请求中未携带 controller 配置或解析出错，服务端会回退读取本地的默认 controller 配置。
 
 ```sh
 curl -d "{\"LoadTestConfig\": $(cat config/config.json)}" http://localhost:4000/loadagent/create\?id\=lt0
 ```
 
-### Start the load-test agent
+### 启动 load-test agent
 
 ```sh
 curl -X POST http://localhost:4000/loadagent/lt0/run
 ```
 
-### Add active users
+### 增加活跃用户
 
 ```sh
 curl -X POST http://localhost:4000/loadagent/lt0/addusers?amount=10
 ```
 
-### Remove active users
+### 减少活跃用户
 
 ```sh
 curl -X POST http://localhost:4000/loadagent/lt0/removeusers?amount=10
 ```
 
-### Stop the load-test agent
+### 停止 load-test agent
 
 ```sh
 curl -X POST http://localhost:4000/loadagent/lt0/stop
 ```
 
-### Destroy the load-test agent
+### 销毁 load-test agent
 
 ```sh
 curl -X DELETE http://localhost:4000/loadagent/lt0
 ```
 
-## Running a load-test through the coordinator
+## 通过 coordinator 运行负载测试
 
-An even more advanced way to run a load-test is through the use of the [`coordinator`](coordinator.md).
-This is especially needed when we need to figure out the maximum number of users the target instance supports.
-The [`coordinator`](coordinator.md) does also help running a load-test across a cluster of agents.
+最高级的方式是使用 [`coordinator`](coordinator.md)。
+当需要摸清目标实例能支撑的**最大用户数**时必须用它；
+coordinator 也支持跨 agent 集群运行负载测试。
 
-### Prerequisites
+### 前置条件
 
-In order to run the [`coordinator`](coordinator.md) a [Prometheus](https://prometheus.io/docs/introduction/overview/) server needs to be running and correctly [configured](https://docs.mattermost.com/deployment/metrics.html) for the target Mattermost instance.
+运行 [`coordinator`](coordinator.md) 需要一个正在运行的
+[Prometheus](https://prometheus.io/docs/introduction/overview/) 服务，
+且已针对目标 Mattermost 实例完成[配置](https://docs.mattermost.com/deployment/metrics.html)。
 
-### Start the load-test agent API server
+### 启动 load-test agent API 服务
 
-The first step is having the server running.
+第一步先让 API 服务跑起来：
 
 ```sh
 go run ./cmd/ltapi
 ```
-### Start LTBrowser server (optional)
 
-If load tests is configured to run browser tests then you need to start the LTBrowser server as well.
-From a different terminal, run the following commands to start the LTBrowser server.
+### 启动 LTBrowser 服务（可选）
+
+如果负载测试配置了浏览器测试，则还需要启动 LTBrowser 服务。
+另开一个终端执行：
 
 ```sh
 nvm use
@@ -162,60 +174,60 @@ cd browser
 make start
 ```
 
-### Configure the coordinator
+### 配置 coordinator
 
-Before starting the [`coordinator`](coordinator.md), the default configuration file should be copied and modified accordingly.
+启动 [`coordinator`](coordinator.md) 前，先复制默认配置并按需修改：
 
 ```sh
 cp config/coordinator.sample.json config/coordinator.json
 ```
 
-Its documentation can be found [here](config/coordinator.md).
+配置说明见[这里](config/coordinator.md)。
 
-### Run the coordinator
+### 运行 coordinator
 
-From a different terminal we can then run the [`coordinator`](coordinator.md).
+另开终端运行 [`coordinator`](coordinator.md)：
 
 ```sh
 go run ./cmd/ltcoordinator
 ```
 
-This will start running a load-test across the configured cluster of load-test agents.
+这会在配置好的 load-test agent 集群上启动负载测试。
 
-### Run coordinator using the API server
+### 通过 API 服务运行 coordinator
 
-Similar to what happens for the load-test agents, a coordinator (or more than
-one) can be created and run using the API server.
+与 load-test agent 类似，coordinator 也可以通过 API server 创建和运行（可多个）。
 
-### Start the API server
+### 启动 API 服务
 
 ```sh
 go run ./cmd/ltapi
 ```
 
-### Create a coordinator
+### 创建 coordinator
 
 ```sh
 curl -d "{\"CoordinatorConfig\": $(cat config/coordinator.json), \"LoadTestConfig\": $(cat config/config.json)}" http://localhost:4000/coordinator/create\?id\=ltc0
 ```
 
-### Run a coordinator
+### 运行 coordinator
 
 ```sh
 curl -X POST http://localhost:4000/coordinator/ltc0/run
 ```
 
-### Stop a coordinator
+### 停止 coordinator
 
 ```sh
 curl -X POST http://localhost:4000/coordinator/ltc0/stop
 ```
 
-### Destroy a coordinator
+### 销毁 coordinator
 
 ```sh
 curl -X DELETE http://localhost:4000/coordinator/ltc0
 ```
-## Comparing results
 
-To compare the results of your load tests, see [here](compare.md).
+## 结果对比
+
+要对比多轮负载测试的结果，参见[这里](compare.md)。

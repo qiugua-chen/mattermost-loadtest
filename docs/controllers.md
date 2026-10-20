@@ -1,52 +1,57 @@
-# Controllers
+# Controllers（用户控制器）
 
-## Introduction
+> 本文为上流文档的中文译版，英文原文见上游仓库：
+> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/controllers.md
 
-The `UserController` is the component in charge of driving/controlling a user.
+## 概述
 
-Its implementation is what defines user's behaviour. This includes any
-action that the user might do like logging in, posting a message, updating the
-profile etc.
+`UserController`（用户控制器）是负责驱动/控制单个虚拟用户的组件。
 
-## Available Controllers
+它的实现定义了用户的行为模式，包括用户可能执行的任何动作，
+例如登录、发消息、更新个人资料等。
 
-We currently provide and support the following implementations:
+## 可用的 Controller
+
+本工具目前提供并支持以下实现：
 
 ### `SimpleController`
 
-This is a simple version of a controller. It will run a pre-defined (and
-configurable) set of actions in a loop.  
-Its configurability and granularity make it a good choice to test performance
-changes for single API calls.  
-This is the recommended controller when the goal of the load-test is to figure
-out if some change in the code might have had an impact on performance related
-to a specific subset of actions.  
+基础版控制器：按预定义（且可配置）的一组动作循环执行。
+它的可配置性和动作粒度，使其非常适合针对单个 API 调用做性能验证。
+当压测目标是确认某次代码变更是否影响了**特定动作子集**的性能时，
+推荐使用该控制器。
+
+> **扩展版说明**：本仓库的二开动作（CreateDirectPost / CreateGroupPost /
+> CreateChannelGroupPost）均挂在 SimpleController 上，通过控制器配置 JSON
+> 的 `actions` 列表按名引用，详见 [EXT-CHANGES.md](EXT-CHANGES.md)。
 
 ### `SimulController`
 
-This is the most simulative version of a controller. It will try and mimic real
-user behaviour.  
-It's the recommended version to use when the goal of the
-load-test is finding out how many concurrently active users the target instance
-supports.  
-It can also be used as a way of doing smoke testing around the backend code.  
+仿真度最高的控制器：尽可能模拟真实用户的行为。
+当压测目标是摸清目标实例能支撑多少**并发活跃用户**时，推荐使用该控制器。
+它也可以用于对后端代码做冒烟测试。
 
 ### `NoopController`
 
-This is a controller that runs the minimum amount of actions needed to connect a user.  
-It is used to calculate what is the ideal performance of a Mattermost instance.  
-It's sole purpose is to have the user login once, open a WebSocket connection and perform just one request.  
-Running this controller will serve as a baseline against which to compare other results.  
+仅执行"让用户连上服务器"所需的最少动作的控制器。
+用于测量 Mattermost 实例的**理想性能基线**：
+让用户登录一次、建立一条 WebSocket 连接、只发一个请求。
+它的运行结果是与其他控制器结果进行对比的基准线。
+
+> **扩展版说明**：本扩展版对 NoopController 做了一处降级改造——预置账号
+> 未设置当前团队时，joinChannel 由"报错"降级为"跳过"，
+> 适合纯连接/在线率压测场景。
 
 ### `GenController`
 
-This controller's purpose is to generate data (teams, channels, posts, etc.).
-This is particularly useful when a more realistic starting setup is required.
-Also, it is used to populate an empty database during the init process.
+用途是生成数据（团队、频道、帖子等）。
+当需要更真实的初始数据环境时特别有用；
+也用于 init 初始化过程中向空数据库灌注数据。
 
 ### `BrowserController`
 
-This is a specialized controller that runs browser-based simulations using Playwright.
-Unlike other controllers, it cannot be used by simply setting `UserControllerConfiguration.Type`.
-Instead, it requires a dedicated load-test agent setup and configuration through the API server.
-See [loadtest/control/browsercontroller/controller.go](../loadtest/control/browsercontroller/controller.go) for implementation details. Configuration is documented in [docs/config/browsercontroller.md](config/browsercontroller.md).
+基于 Playwright 运行浏览器仿真的专用控制器。
+与其他控制器不同，它不能仅通过设置 `UserControllerConfiguration.Type` 启用，
+而是需要独立的 load-test agent 部署方式并通过 API server 配置。
+实现细节见 [loadtest/control/browsercontroller/controller.go](../loadtest/control/browsercontroller/controller.go)，
+配置说明见 [docs/config/browsercontroller.md](config/browsercontroller.md)。
