@@ -1,8 +1,5 @@
 # Coordinator 配置（coordinator.json）
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/config/coordinator.md
->
 > 组件原理见 [coordinator 说明](../coordinator.md)。
 
 ## ClusterConfig（集群配置）

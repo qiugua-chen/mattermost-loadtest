@@ -107,3 +107,9 @@ monitoring/nginx-perf/logs/
 monitoring/nginx-perf/nginx.conf
 monitoring/env/*.env
 !monitoring/env/*.env.sample
+
+# 扩展版补充：真实账号文件/运行产物/本地环境不入库
+config/users/*.txt
+!config/users/*.sample.txt
+results/
+runtime/

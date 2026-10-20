@@ -1,7 +1,5 @@
 # 使用 Terraform 部署运行负载测试
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/terraform_loadtest.md
 
 本文介绍如何用 [Terraform](https://www.terraform.io/intro/index.html) 部署来搭建并运行负载测试。
 按此流程可以基本自动化地创建一套完整的[负载测试系统](loadtest_system.md)，

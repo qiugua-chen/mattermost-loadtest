@@ -1,8 +1,5 @@
 # Comparison 配置（comparison.json）
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/config/comparison.md
->
 > 使用流程见[自动化负载对比测试](../comparison.md)。
 
 ## BaseBuild（基准构建）

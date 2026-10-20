@@ -31,7 +31,7 @@
   },
   "UsersConfiguration": {
     "InitialActiveUsers": 0,
-    "UsersFilePath": "./results/data-preparation/DATA_S01_1200_20260920_180249/imlts01-users-1200.txt",
+    "UsersFilePath": "./config/users/users-1200.txt",
     "MaxActiveUsers": 1200,
     "MaxActiveBrowserUsers": 0,
     "AvgSessionsPerUser": 1,
@@ -44,7 +44,7 @@
     "EnableFile": true,
     "FileLevel": "INFO",
     "FileJson": true,
-    "FileLocation": "./results/runs/S01_LOGIN_20260921_144635/logs/ltagent-login-1200.jsonl",
+    "FileLocation": "./logs/ltagent-formal.jsonl",
     "EnableColor": false
   }
 }

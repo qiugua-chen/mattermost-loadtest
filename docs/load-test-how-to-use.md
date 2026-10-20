@@ -1,8 +1,5 @@
 # 负载测试使用指南
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/load-test-how-to-use.md
->
 > 说明：本文是 Mattermost 官方团队为"给服务端新特性做性能验证"所写的内部工作流，
 > 其中 terraform/AWS 部署与 PR 提交流程为官方团队语境，供参考；
 > 本扩展版的实际使用流程以根目录 [README.md](../README.md) 为准。

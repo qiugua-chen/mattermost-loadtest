@@ -1,7 +1,5 @@
 # 完整负载测试系统架构
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/loadtest_system.md
 
 下图为完整压测体系的组件关系：
 

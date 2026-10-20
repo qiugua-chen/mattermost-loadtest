@@ -1,7 +1,5 @@
 # FAQ（常见问题）
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/faq.md
 
 ### load-test agent 支持哪些登录方式？
 

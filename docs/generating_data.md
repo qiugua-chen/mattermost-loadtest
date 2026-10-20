@@ -1,7 +1,5 @@
 # 数据生成（Generating data）
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/generating_data.md
 
 运行负载测试时，影响性能的变量很多，其中之一就是系统承载数据的形态与规模。你的分析可能要求所有测试共享同一份数据集；也可能要固定其他变量、只改变数据库初始状态。两种情况都需要一套可复现的数据生成流程。
 

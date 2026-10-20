@@ -1,7 +1,5 @@
 # Deployer 配置（deployer.json）
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/config/deployer.md
 >
 > 说明：本文件是 AWS/Terraform 自动化部署的专属配置。自建机房/内网环境
 > 用不到 deployer，直接按[本地运行指南](../local_loadtest.md)部署 agent 即可。

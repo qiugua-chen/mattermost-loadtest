@@ -76,7 +76,19 @@ python3 scripts/mattermost_prepare_users.py \
 ```
 
 **2. 配置连接**：复制 `config/config-smoke.sample.json` 为 `config/config-smoke.json`，
-填入 `ServerURL` / `WebSocketURL` / `AdminEmail` / `AdminPassword`（真实配置已被 `.gitignore` 忽略，不会误提交）。
+填入 `ServerURL` / `WebSocketURL` / `AdminEmail` / `AdminPassword`，
+并把 `UsersConfiguration.UsersFilePath` 由 `""` 改为 `"./config/users/imlt-users.txt"`（指向上一步生成的账号文件）。
+真实配置已被 `.gitignore` 忽略，不会误提交。
+
+> ⚠️ 关键：`UsersFilePath` 留空时 ltagent 使用内置生成账号（用户名 `<prefix>-N`、固定密码），
+> 与 `LT_SKIP_SIGNUP=true` 的预置账号模式不匹配，登录会全部失败；且消息场景（单聊/群聊）
+> 依赖用户名末 5 位数字做确定性配对，必须使用预置账号文件。
+
+**2.1 准备运行目录**（ltagent 不会自动创建日志/结果目录；`config-smoke.sample.json` 的日志路径为 `./logs/agent01/`）：
+
+```bash
+mkdir -p logs/agent01 results
+```
 
 **3. 登录冒烟**（10 用户，60 秒）：
 

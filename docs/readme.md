@@ -1,8 +1,5 @@
 # 文档索引
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/readme.md
->
 > **扩展版读者提示**：如果你使用的是本扩展仓库（mattermost-loadtest），
 > 建议优先阅读根目录 [README.md](../README.md)、[EXT-CHANGES.md](EXT-CHANGES.md)
 > 与 [REUSE.md](REUSE.md) 三份中文文档；本目录其余文档为上游参考资料。

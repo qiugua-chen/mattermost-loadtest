@@ -1,7 +1,5 @@
 # LoadTest 配置（config.json）
 
-> 本文为上流文档的中文译版，英文原文见上游仓库：
-> https://github.com/mattermost/mattermost-load-test-ng/blob/master/docs/config/config.md
 
 ## ConnectionConfiguration（连接配置）
 
