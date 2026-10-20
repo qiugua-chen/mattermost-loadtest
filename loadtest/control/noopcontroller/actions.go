@@ -106,6 +106,8 @@ func (c *NoopController) joinChannel(u user.User) control.UserActionResponse {
 	if err != nil {
 		return control.UserActionResponse{Err: control.NewUserError(err)}
 	} else if team == nil {
+		// 降级：预置账号未设置当前团队时，由"报错"降级为"跳过"，
+		// 保证纯连接/在线率压测（noop 场景）不被单个账号状态阻断。
 		return control.UserActionResponse{Info: "current team is not set; skip joining channel for pre-provisioned user"}
 	}
 

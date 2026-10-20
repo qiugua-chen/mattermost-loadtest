@@ -18,7 +18,8 @@ import (
 // SimpleController is a very basic implementation of a controller.
 // Currently, it just performs a pre-defined set of actions in a loop.
 type SimpleController struct {
-	groupChannelId     string
+	groupChannelId     string          // 群聊频道缓存（预留字段）
+	id                 int
 	id                 int
 	user               user.User
 	status             chan<- control.UserStatus
@@ -31,7 +32,8 @@ type SimpleController struct {
 	connectedFlag      int32           // indicates that the controller is connected
 	wg                 *sync.WaitGroup // to keep the track of every goroutine created by the controller
 
-	// directChannelID caches the deterministic DM channel used by CreateDirectPost.
+	// directChannelID 缓存 CreateDirectPost 确定性配对解析出的 DM 频道 ID，
+	// 避免稳态压测中每次发消息都重复建频道。
 	directChannelID string
 }
 
@@ -190,9 +192,10 @@ func (c *SimpleController) createActions(definitions []actionDefinition) error {
 	c.actionMap = map[string]control.UserAction{
 		"AddReaction":            control.AddReaction,
 		"CreateDirectChannel":    control.CreateDirectChannel,
-		"CreateDirectPost":       c.createDirectPost,
-		"CreateGroupPost":        c.createGroupPost,
-		"CreateChannelGroupPost": c.createChannelGroupPost,
+		// 以下为扩展动作（二开新增），在 Controller 配置 JSON 的 actions 里按名引用：
+		"CreateDirectPost":       c.createDirectPost,       // S02 单聊：确定性配对发私信
+		"CreateGroupPost":        c.createGroupPost,        // S03_GM 群聊：确定性分组群发
+		"CreateChannelGroupPost": c.createChannelGroupPost, // S03_CHANNEL_GROUP 频道群发：N 发 M 收
 		"CreateGroupChannel":     control.CreateGroupChannel,
 		"CreatePost":             control.CreatePost,
 		"CreatePostReply":        control.CreatePostReply,

@@ -16,6 +16,7 @@ import (
 func (c *SimpleController) wsEventHandler(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for ev := range c.user.Events() {
+		// 改造点：每个 WS 事件先经接收延迟采集（仅含 send_unix_nano 的本工具消息会生效）。
 		c.recordReceiverLatency(ev)
 		switch ev.EventType() {
 		case model.WebsocketEventUserUpdated:

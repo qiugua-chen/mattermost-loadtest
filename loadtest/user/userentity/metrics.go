@@ -21,6 +21,8 @@ func (ue *UserEntity) decWebSocketConnections() {
 	}
 }
 
+// incWebSocketEvent 按事件类型累加 WebSocket 事件计数（对应 metrics.go 中的
+// WebSocketEvents 指标，由 ltagent 的 /metrics 端点暴露给 Prometheus）。
 func (ue *UserEntity) incWebSocketEvent(event string) {
 	if ue.metrics != nil {
 		ue.metrics.WebSocketEvents.
@@ -29,6 +31,8 @@ func (ue *UserEntity) incWebSocketEvent(event string) {
 	}
 }
 
+// incWebSocketMissedEvent 累加"丢事件"计数：当收到的事件序列号与预期不一致时调用，
+// 用于量化压测期间 WebSocket 推送丢失（序列空洞）。
 func (ue *UserEntity) incWebSocketMissedEvent() {
 	if ue.metrics != nil {
 		ue.metrics.WebSocketMissedEvents.Inc()

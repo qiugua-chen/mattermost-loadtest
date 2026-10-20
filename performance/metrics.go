@@ -21,8 +21,8 @@ type UserEntityMetrics struct {
 	HTTPErrors            *prometheus.CounterVec
 	HTTPTimeouts          *prometheus.CounterVec
 	WebSocketConnections  prometheus.Gauge
-	WebSocketEvents       *prometheus.CounterVec
-	WebSocketMissedEvents prometheus.Counter
+	WebSocketEvents       *prometheus.CounterVec // 按事件类型统计已接收的 WebSocket 事件数
+	WebSocketMissedEvents prometheus.Counter     // 检测到的 WebSocket 序列空洞（疑似丢事件）总数
 }
 
 type Metrics struct {
@@ -68,6 +68,8 @@ func NewMetrics() *Metrics {
 	})
 	m.registry.MustRegister(m.ueMetrics.WebSocketConnections)
 
+	// loadtest_websocket_events_received_total{event="posted"|...}
+	// 用于核对消息场景下各 agent 实际收到的事件量（业务层吞吐核对）。
 	m.ueMetrics.WebSocketEvents = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: metricsNamespace,
@@ -79,6 +81,8 @@ func NewMetrics() *Metrics {
 	)
 	m.registry.MustRegister(m.ueMetrics.WebSocketEvents)
 
+	// loadtest_websocket_missed_events_total
+	// 序列号跳变即计数一次，是"服务端过载丢推送"的关键探针指标。
 	m.ueMetrics.WebSocketMissedEvents = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: metricsNamespace,

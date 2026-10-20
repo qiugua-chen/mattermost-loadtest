@@ -113,6 +113,8 @@ func RunLoadTestCmdF(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// 改造点：每个 ltagent 进程独立创建并持有 Prometheus 指标注册表，
+	// 使各压测 agent 的指标可被独立抓取（多 agent 分布式压测场景）。
 	metrics := performance.NewMetrics()
 	newC, err := api.NewControllerWrapper(config, ucConfig, userOffset, userPrefix, metrics, false)
 	if err != nil {
@@ -123,6 +125,10 @@ func RunLoadTestCmdF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error while initializing loadtest: %w", err)
 	}
 
+	// 改造点：内嵌 HTTP 指标服务，暴露 /metrics（Prometheus 抓取）与
+	// /status（压测运行状态 JSON）两个端点。
+	// 监听地址由 LT_METRICS_ADDR 控制，默认 127.0.0.1:4001（仅本机回环，
+	// 多 agent 同机部署时由 scripts/collect_ltagent_metrics.sh 按端口区分抓取）。
 	metricsAddr := os.Getenv("LT_METRICS_ADDR")
 	if metricsAddr == "" {
 		metricsAddr = "127.0.0.1:4001"
@@ -182,6 +188,8 @@ func RunLoadTestCmdF(cmd *cobra.Command, args []string) error {
 	}
 	time.Sleep(time.Duration(durationSec) * time.Second)
 	err = lt.Stop()
+	// 收尾缓冲：Stop 后等待 3s，让在途的 WS 事件处理与结果落盘完成，
+	// 避免压测尾部数据（如接收延迟 CSV 的最后几条记录）丢失。
 	time.Sleep(3 * time.Second)
 	mlog.Info("loadtest done", mlog.String("elapsed", time.Since(start).String()))
 

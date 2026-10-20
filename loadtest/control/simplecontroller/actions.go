@@ -189,11 +189,7 @@ func (c *SimpleController) disconnect() error {
 	return nil
 }
 
-// createDirectPost sends a message to a deterministic one-to-one Direct
-// Channel. Test users are paired by the numeric suffix in their username:
-// 1<->2, 3<->4, 5<->6. The Direct Channel is resolved once per controller and
-// then cached, so channel creation is not included in the steady-state message
-// traffic.
+// groupEnvInt 读取整型环境变量（群聊场景参数用），未设置、解析失败或 <=0 时返回默认值。
 func groupEnvInt(name string, defaultValue int) int {
 	value := os.Getenv(name)
 	if value == "" {
@@ -208,6 +204,8 @@ func groupEnvInt(name string, defaultValue int) int {
 	return parsed
 }
 
+// groupUserNumber 从用户名末尾解析 5 位数字编号（如 ltuser00042 -> 42）。
+// 约定：压测账号命名格式为 <前缀><5位数字>，编号用于确定性分组/配对。
 func groupUserNumber(username string) (int, bool) {
 	if len(username) < 5 {
 		return 0, false
@@ -218,6 +216,7 @@ func groupUserNumber(username string) (int, bool) {
 	return n, err == nil
 }
 
+// groupUserPrefix 取用户名去掉末尾 5 位数字后的前缀部分（如 ltuser00042 -> ltuser）。
 func groupUserPrefix(username string) string {
 	if len(username) < 5 {
 		return ""
@@ -226,6 +225,12 @@ func groupUserPrefix(username string) string {
 	return username[:len(username)-5]
 }
 
+// createGroupPost 群聊发消息动作（场景 S03_GM）。
+// 按用户名数字编号确定性分组：编号 1 起每 LT_GROUP_SIZE 人一组（默认 3 人），
+// 组内成员两两确定，无需预先建群——压测时由首发用户创建 Group Channel，
+// Mattermost 对相同成员组合会复用已有频道，天然幂等。
+// 消息体内嵌 send_unix_nano 发送时间戳与唯一 msg id，供接收端
+// recordReceiverLatency 计算端到端延迟。
 func (c *SimpleController) createGroupPost(u user.User) control.UserActionResponse {
 	groupSize := groupEnvInt("LT_GROUP_SIZE", 3)
 	if groupSize < 3 {
@@ -296,6 +301,11 @@ func (c *SimpleController) createGroupPost(u user.User) control.UserActionRespon
 	return control.UserActionResponse{Info: fmt.Sprintf("group post created, group_size=%d channel_id=%s post_id=%s", groupSize, channelId, postId)}
 }
 
+// createDirectPost 单聊（私信）发消息动作（场景 S02_DIRECT）。
+// 配对规则：按用户名数字后缀确定性配对 1<->2、3<->4、5<->6……，
+// 即奇数编号发给 +1，偶数编号发给 -1，无需人工维护配对表。
+// DM 频道首次解析后缓存在 c.directChannelID，稳态压测流量中不含建频道开销。
+// 消息体内嵌 send_unix_nano 供端到端延迟计算。
 func (c *SimpleController) createDirectPost(u user.User) control.UserActionResponse {
 	if c.directChannelID == "" {
 		username := u.Store().Username()
@@ -438,7 +448,15 @@ func (c *SimpleController) createDirectPost(u user.User) control.UserActionRespo
 	}
 }
 
-// createChannelGroupPost is for S03B channel group performance testing.
+// createChannelGroupPost 频道群发动作（场景 S03_CHANNEL_GROUP）：
+// 单一频道内"N 发 M 收"模型——全部用户先入群并在线待命（接收方），
+// 仅前 LT_CHANNEL_GROUP_SENDERS 个 controller 发消息，考核频道广播扇出能力。
+//
+// 门控机制：LT_ACTION_START_FILE 指向的信号文件不存在时，动作只做
+// "确保已加入频道"的就绪初始化并返回；信号文件出现后才真正开始发送。
+// 配合 loadtest-stage-functions.sh 实现"全员就绪后再开压"的同步起跑。
+//
+// 必需环境变量：LT_CHANNEL_GROUP_CHANNEL_ID（目标频道 ID）。
 func (c *SimpleController) createChannelGroupPost(u user.User) control.UserActionResponse {
 	channelID := os.Getenv("LT_CHANNEL_GROUP_CHANNEL_ID")
 	if channelID == "" {
@@ -504,6 +522,12 @@ func (c *SimpleController) createChannelGroupPost(u user.User) control.UserActio
 	return control.UserActionResponse{Info: fmt.Sprintf("channel group post created, id=%s", postID)}
 }
 
+// recordReceiverLatency 端到端接收延迟采集（接收侧）。
+// 在 WS posted 事件回调中实时解析消息体内嵌的 send_unix_nano 发送时间戳，
+// 计算 发送->接收 全链路延迟（含服务端处理 + WS 推送），
+// 以 CSV 行追加写入 LT_RECEIVER_LATENCY_FILE 指定的文件，
+// 供 scripts/summarize_receiver_latency.py 做分位数统计（P50/P95/P99）。
+// 非本工具发出的消息（无 send_unix_nano 标记）直接忽略。
 func (c *SimpleController) recordReceiverLatency(event *model.WebSocketEvent) {
 	if event == nil || event.EventType() != model.WebsocketEventPosted {
 		return

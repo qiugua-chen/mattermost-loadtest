@@ -101,6 +101,7 @@ func (ue *UserEntity) handlePostEvent(ev *model.WebSocketEvent) error {
 // sync with the server. Any response to the event should be made by handling
 // the same event at the upper layer (controller).
 func (ue *UserEntity) wsEventHandler(ev *model.WebSocketEvent) error {
+	// 改造点：每个进入的 WS 事件先按类型计数（事件接收量核对）。
 	ue.incWebSocketEvent(string(ev.EventType()))
 
 	if ev.EventType() == model.WebsocketEventHello {
@@ -120,6 +121,7 @@ func (ue *UserEntity) wsEventHandler(ev *model.WebSocketEvent) error {
 	// Now we check for sequence number, and if it does not match,
 	// we just disconnect and reconnect.
 	if ev.GetSequence() != ue.wsServerSeq {
+		// 改造点：序列号跳变时累加丢事件指标（服务端过载丢推送的探针）。
 		ue.incWebSocketMissedEvent()
 		mlog.Warn("Missed websocket event", mlog.Int("got", ev.GetSequence()), mlog.Int("expected", ue.wsServerSeq))
 		return errSeqMismatch

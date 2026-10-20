@@ -33,11 +33,15 @@ type UserActionResponse struct {
 
 var ErrInjectActionQueueFull = errors.New("inject action queue full")
 
+// loginLimiter 登录并发限流器（进程级单例）。
+// 通过带缓冲 channel 实现信号量：容量即最大并发登录数，
+// 由环境变量 LT_LOGIN_CONCURRENCY 控制（0 表示不限流）。
 var loginLimiter struct {
 	once  sync.Once
 	slots chan struct{}
 }
 
+// envInt 读取整型环境变量，未设置或解析失败时返回默认值。
 func envInt(name string, defaultValue int) int {
 	value := os.Getenv(name)
 	if value == "" {
@@ -52,6 +56,10 @@ func envInt(name string, defaultValue int) int {
 	return parsed
 }
 
+// acquireLoginSlot 获取一个登录并发槽位，返回释放函数（调用方应 defer 执行）。
+// 未配置 LT_LOGIN_CONCURRENCY（或 <=0）时不限流，返回空操作函数。
+// 用途：大规模登录压测时避免瞬时并发登录把 Mattermost 服务端/数据库打满，
+// 将登录洪峰削平为受控速率（对应 S01 登录场景）。
 func acquireLoginSlot() func() {
 	loginConcurrency := envInt("LT_LOGIN_CONCURRENCY", 0)
 	if loginConcurrency <= 0 {
@@ -69,6 +77,11 @@ func acquireLoginSlot() func() {
 	}
 }
 
+// withLoginRetry 为登录动作增加失败重试。
+// 重试次数由 LT_LOGIN_RETRIES 控制（默认 0，即不重试），
+// 每次重试间隔由 LT_LOGIN_RETRY_SLEEP_MS 控制（默认 1000ms）。
+// 用途：压测高并发下偶发的 5xx/超时会被立即判为登录失败，
+// 适度重试可剔除网络抖动带来的假失败，让登录成功率数据更真实。
 func withLoginRetry(action func() error) error {
 	retries := envInt("LT_LOGIN_RETRIES", 0)
 	if retries < 0 {
@@ -101,6 +114,9 @@ type UserAction func(user.User) UserActionResponse
 
 // SignUp signs up the given user to the server.
 func SignUp(u user.User) UserActionResponse {
+	// LT_SKIP_SIGNUP=true 时跳过注册：适用于账号已由
+	// scripts/mattermost_prepare_users.py 预置的环境，
+	// 避免重复注册产生 409 冲突噪声，直接复用存量账号压测。
 	if os.Getenv("LT_SKIP_SIGNUP") == "true" {
 		return UserActionResponse{
 			Info: "SignUp skipped because LT_SKIP_SIGNUP=true",
@@ -127,6 +143,8 @@ func SignUp(u user.User) UserActionResponse {
 // Login authenticates the user with the server and fetches teams, users and
 // channels that are related with the user.
 func Login(u user.User) UserActionResponse {
+	// 改造点：登录前先获取并发槽位（限流），失败时按配置重试。
+	// 两项均通过环境变量开关，未配置时行为与上游一致。
 	releaseLoginSlot := acquireLoginSlot()
 	defer releaseLoginSlot()
 
@@ -873,6 +891,8 @@ func Reload(u user.User) UserActionResponse {
 	}
 
 	err = u.GetWebappPlugins()
+	// 容错：服务端禁用插件时该接口返回错误属预期行为，
+	// 不应判定 Reload 失败（生产形态部署常关闭插件）。
 	if err != nil && !strings.Contains(err.Error(), "Plugins have been disabled") {
 		return UserActionResponse{Err: NewUserError(err)}
 	}
@@ -893,6 +913,8 @@ func Reload(u user.User) UserActionResponse {
 	} else if team != nil {
 		teamId = team.Id
 	} else if len(teamIds) > 0 {
+		// 回退：预置账号可能未设置"当前团队"，
+		// 取用户所属的第一个团队兜底，避免 Reload 直接失败。
 		teamId = teamIds[0]
 	}
 
