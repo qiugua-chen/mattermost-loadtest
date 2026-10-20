@@ -1,0 +1,8 @@
+{
+  "Actions": [
+    {
+      "ActionId": "CreatePost",
+      "WaitAfterMs": 20000,
+      "RunPeriod": 1
+    }]
+}

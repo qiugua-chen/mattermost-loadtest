@@ -1,0 +1,9 @@
+{
+  "Actions": [
+    {
+      "ActionId": "CreateChannelGroupPost",
+      "RunPeriod": 1,
+      "WaitAfterMs": 1000
+    }
+  ]
+}

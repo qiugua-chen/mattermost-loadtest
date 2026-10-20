@@ -1,0 +1,9 @@
+{
+  "Actions": [
+    {
+      "ActionId": "CreateGroupPost",
+      "RunPeriod": 1,
+      "WaitAfterMs": 1000
+    }
+  ]
+}
