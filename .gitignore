@@ -97,3 +97,7 @@ lambda/node_modules
 lambda/screenshot*
 lambda/response*
 lambda/deployment.zip
+
+# 扩展版：纳入脱敏后的场景配置与凭据占位
+!config/formal/
+!config/users/

@@ -1,20 +1,148 @@
-# Mattermost load-test-ng
+# Mattermost IM 性能测试扩展工具套件（mattermost-load-test-ng-ext）
 
-Mattermost load-test-ng provides a set of tools written in [Go](https://golang.org/) to help profiling [Mattermost](https://github.com/mattermost/mattermost) under heavy load, simulating real-world usage of a server installation at scale.
+> 基于官方 [mattermost-load-test-ng](https://github.com/mattermost/mattermost-load-test-ng) 的二次开发扩展版，
+> 面向真实企业 IM 环境（预置账号、免注册、免加入频道）的**登录 / 单聊 / 群聊 / 频道群发**全链路压测与**端到端消息延迟度量**。
+>
+> **EN**: An extended fork of Mattermost's official load-test-ng, adding deterministic DM/group messaging scenarios,
+> end-to-end receiver-latency measurement over WebSocket, embedded Prometheus metrics, login throttling/retry,
+> and a staged execution + summarization script suite — designed for pre-provisioned enterprise IM environments.
 
-It's a complete rewrite of the [previous](https://github.com/mattermost/mattermost-load-test) load-test tool which served as inspiration.
+---
 
-## Goals
+## 与上游的关系
 
-- Give an estimate on the maximum number of concurrently active users the target system supports.
-- Enable more control over the load to generate through the use of [Controllers](docs/controllers.md).
-- Provide extensive documentation from lower level code details to higher level guides and walk-throughs.
+- **上游基线**：`mattermost/mattermost-load-test-ng` @ `784dbc1`（"Add Agents load-test package link (#988)"）
+- **许可证**：沿用上游 [Apache-2.0](LICENSE.txt)，上游版权声明保留；本仓库所有新增/修改文件同样以 Apache-2.0 发布
+- **改造清单**：逐文件说明见 [docs/EXT-CHANGES.md](docs/EXT-CHANGES.md)
+- **复用指南**：不同被测系统下的迁移方法见 [docs/REUSE.md](docs/REUSE.md)
 
-## Documentation
+## 改造亮点
 
+| 能力 | 说明 | 关键文件 |
+|---|---|---|
+| **确定性单聊压测（S02）** | 按用户名数字后缀配对（1↔2、3↔4…），DM 频道建一次后缓存，稳态流量不含建频道开销 | `simplecontroller/actions.go` |
+| **确定性群聊压测（S03）** | 按 `LT_GROUP_SIZE` 分组（默认 3 人群），编号连续分组，成员确定性解析 | `simplecontroller/actions.go` |
+| **频道群发压测（S03B）** | 单频道 N 发 M 收，开始信号文件门控（`LT_ACTION_START_FILE`），收发两侧可分别部署 | `simplecontroller/actions.go` |
+| **端到端接收延迟** | 消息体携带 `send_unix_nano`，接收侧 WebSocket `posted` 事件实时解析，毫秒级延迟落盘 | `simplecontroller/websocket.go` |
+| **内嵌 Prometheus 指标** | ltagent 自带 `/metrics`（默认 `127.0.0.1:4001`）+ `/status`，新增 WS 事件计数与序列空洞指标 | `cmd/ltagent/loadtest.go`、`performance/metrics.go` |
+| **登录治理** | 登录并发限流 `LT_LOGIN_CONCURRENCY`、失败重试 `LT_LOGIN_RETRIES`、跳过注册 `LT_SKIP_SIGNUP` | `loadtest/control/actions.go` |
+| **预置账号适配** | 免注册、免加入团队/频道的容错降级（插件禁用、无当前团队不再判失败） | `loadtest/control/actions.go`、`noopcontroller` |
+| **舞台化执行脚本** | 就绪门控（实际在线数 + WS 连接数双达标才计时）、场景化一键执行、结果自动汇总 | `loadtest-stage-functions.sh`、`scripts/` |
+| **用户工程脚本** | 批量预置用户、幂等分配团队/频道成员（凭据走环境变量，不落盘） | `scripts/mattermost_*.py` |
+
+## 环境变量一览
+
+| 变量 | 默认 | 作用 |
+|---|---|---|
+| `LT_SKIP_SIGNUP` | - | `true` 时跳过注册（预置账号场景必设） |
+| `LT_LOGIN_CONCURRENCY` | 0（不限） | 登录并发上限 |
+| `LT_LOGIN_RETRIES` | 0 | 登录失败重试次数 |
+| `LT_LOGIN_RETRY_SLEEP_MS` | 1000 | 重试间隔（毫秒） |
+| `LT_METRICS_ADDR` | `127.0.0.1:4001` | 内嵌 metrics 服务监听地址 |
+| `LT_GROUP_SIZE` | 3 | 群聊分组人数 |
+| `LT_CHANNEL_GROUP_CHANNEL_ID` | - | 频道群发场景目标频道 ID |
+| `LT_CHANNEL_GROUP_SENDERS` | 1 | 频道群发场景发送者数量 |
+| `LT_ACTION_START_FILE` | - | 正式开始信号文件（存在即进入发送态） |
+| `LT_RECEIVER_LATENCY_FILE` | - | 接收延迟落盘文件（不设置则不采集） |
+| `MM_TOKEN` | - | 用户工程脚本的 admin token（仅 `scripts/mattermost_*.py` 使用） |
+
+## 构建
+
+要求 Go 1.24+（开发基线为 go1.26.3）：
+
+```bash
+# 核心压测 agent
+go build -o bin/ltagent ./cmd/ltagent
+
+# 全量编译检查
+go build ./...
+```
+
+## 最小复现（冒烟：登录 → 单聊 → 群聊）
+
+> 前置：一个可用的 Mattermost 实例（地址记为 `http://<MM_HOST>:8065`），一个 system_admin 账号。
+
+**1. 预置测试用户**（用户名形如 `imlt00001`，密码统一，从环境变量读取）：
+
+```bash
+export MM_TOKEN=<admin_token>
+export IMLT_USER_PASSWORD='<统一密码>'
+python3 scripts/mattermost_prepare_users.py \
+  --server http://<MM_HOST>:8065 \
+  --count 20 --prefix imlt \
+  --output ./config/users/imlt-users.txt \
+  --result-log ./results/prepare_users.jsonl
+```
+
+**2. 配置连接**：复制 `config/config-smoke.sample.json` 为 `config/config-smoke.json`，
+填入 `ServerURL` / `WebSocketURL` / `AdminEmail` / `AdminPassword`（真实配置已被 `.gitignore` 忽略，不会误提交）。
+
+**3. 登录冒烟**（10 用户，60 秒）：
+
+```bash
+export LT_SKIP_SIGNUP=true LT_LOGIN_CONCURRENCY=5 LT_LOGIN_RETRIES=3
+./bin/ltagent loadtest -c config/config-smoke.json -n 10 -d 60 \
+  --user-prefix imlt --controller-config config/simplecontroller-login.sample.json
+```
+
+**4. 单聊冒烟**（10 用户 = 5 对，120 秒，采集接收延迟）：
+
+```bash
+export LT_RECEIVER_LATENCY_FILE=./results/smoke_direct_latency.txt
+./bin/ltagent loadtest -c config/config-smoke.json -n 10 -d 120 \
+  --user-prefix imlt --controller-config config/formal/simplecontroller-direct.json
+```
+
+**5. 群聊冒烟**（9 用户 = 3 组三人行，120 秒）：
+
+```bash
+export LT_GROUP_SIZE=3
+./bin/ltagent loadtest -c config/config-smoke.json -n 9 -d 120 \
+  --user-prefix imlt --controller-config config/formal/simplecontroller-group.json
+```
+
+**6. 验证结果**：
+
+```bash
+# 延迟分布汇总
+bash scripts/summarize_receiver_latency.sh ./results/smoke_direct_latency.txt
+# ltagent 指标
+curl -s http://127.0.0.1:4001/metrics | head
+```
+
+预期：无 `ERRO` 级别日志；单聊/群聊日志出现 `direct post created` / `group post created`；延迟文件有数据且 P95 在可解释范围内。
+
+## 目录说明（自定义部分）
+
+```
+loadtest-stage-functions.sh        # 舞台化执行函数库（就绪门控、监控采集编排）
+scripts/
+  mattermost_prepare_users.py      # 批量预置测试用户
+  mattermost_assign_users.py       # 幂等分配用户到团队/频道
+  lt_run_message.sh                # 消息场景一键执行入口
+  collect_ltagent_metrics.sh       # 采集各 agent 的 Prometheus 指标
+  summarize_http_perf.sh/.py       # HTTP 性能汇总
+  summarize_message_metrics.sh     # 消息指标汇总
+  summarize_receiver_latency.sh    # 接收延迟分布汇总
+  S02_direct_window_report.py      # 单聊时间窗口报告
+config/formal/                     # 正式场景参数样例（1200 用户级）
+config/*.sample.json               # 冒烟/agent 配置样例（复制后填真实值）
+docs/EXT-CHANGES.md                # 逐文件改造清单
+docs/REUSE.md                      # 跨环境/跨产品复用指南
+```
+
+## 许可证
+
+[Apache-2.0](LICENSE.txt)。本项目包含来自 [mattermost/mattermost-load-test-ng](https://github.com/mattermost/mattermost-load-test-ng) 的代码，
+原版权归 Mattermost, Inc. 所有；新增与修改部分同样以 Apache-2.0 发布，使用时请保留上游许可与来源声明。
+
+---
+
+<details>
+<summary>上游 README 原文</summary>
+
+Mattermost load-test-ng provides a set of tools written in Go to help profiling Mattermost under heavy load,
+simulating real-world usage of a server installation at scale. It's a complete rewrite of the previous load-test tool.
 Documentation and implementation details can be found in the [docs](docs/) folder.
-Code specific documentation can be found on [GoDoc](https://godoc.org/github.com/mattermost/mattermost-load-test-ng).
 
-## Help
-
-If you need any help you can join the [Developers: Performance](https://community.mattermost.com/core/channels/developers-performance) channel and ask developers any question related to this project.
+</details>
