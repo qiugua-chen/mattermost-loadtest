@@ -117,7 +117,7 @@ mkdir -p logs/agent01 results
 
 ```bash
 export LT_SKIP_SIGNUP=true LT_LOGIN_CONCURRENCY=5 LT_LOGIN_RETRIES=3
-./bin/ltagent loadtest -c config/config-smoke.json -n 10 -d 60 \
+./bin/ltagent -c config/config-smoke.json -n 10 -d 60 \
   --user-prefix imlt --controller-config config/simplecontroller-login.sample.json
 ```
 
@@ -125,7 +125,7 @@ export LT_SKIP_SIGNUP=true LT_LOGIN_CONCURRENCY=5 LT_LOGIN_RETRIES=3
 
 ```bash
 export LT_RECEIVER_LATENCY_FILE=./results/smoke_direct_latency.txt
-./bin/ltagent loadtest -c config/config-smoke.json -n 10 -d 120 \
+./bin/ltagent -c config/config-smoke.json -n 10 -d 120 \
   --user-prefix imlt --controller-config config/formal/simplecontroller-direct.json
 ```
 
@@ -133,7 +133,7 @@ export LT_RECEIVER_LATENCY_FILE=./results/smoke_direct_latency.txt
 
 ```bash
 export LT_GROUP_SIZE=3
-./bin/ltagent loadtest -c config/config-smoke.json -n 9 -d 120 \
+./bin/ltagent -c config/config-smoke.json -n 9 -d 120 \
   --user-prefix imlt --controller-config config/formal/simplecontroller-group.json
 ```
 

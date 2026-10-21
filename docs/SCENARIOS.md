@@ -111,8 +111,8 @@ python3 scripts/mattermost_assign_users.py \
 
 ```bash
 unset LT_SKIP_SIGNUP
-./bin/ltagent loadtest -c config/formal/config-login-1200.json \
-  -n 1200 -d 300 --user-prefix imlt \
+./bin/ltagent -c config/formal/config-login-1200.json \
+  -n 1200 -d 300 --user-prefix imlt --user-offset=-1 \
   --controller-config config/simplecontroller-login.sample.json
 ```
 
