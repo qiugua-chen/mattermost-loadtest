@@ -169,6 +169,8 @@ monitoring/                        # 可观测性子系统
   README.md                        #   三层监控模型与对接说明
 docs/EXT-CHANGES.md                # 逐文件改造清单
 docs/REUSE.md                      # 跨环境/跨产品复用指南
+NOTICE                             # Apache-2.0 修改声明（上游版权 + 本扩展修改说明）
+CONTRIBUTING.md                    # 二开约定与贡献指南
 ```
 
 ## 可观测性（监控子系统）

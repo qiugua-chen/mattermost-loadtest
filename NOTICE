@@ -1,0 +1,14 @@
+mattermost-loadtest
+======================
+
+本仓库是 Mattermost 官方负载测试工具 mattermost-load-test-ng 的二次开发扩展版。
+
+上游项目：
+  https://github.com/mattermost/mattermost-load-test-ng
+  Copyright (c) 2019-present Mattermost, Inc.
+  Licensed under the Apache License, Version 2.0（见 LICENSE.txt）
+
+本扩展版对上游若干文件做了修改并新增了文件（场景动作、登录治理、
+内嵌 Prometheus 指标、监控采集与脚本套件等），依据 Apache License 2.0
+第 4(b) 条在此作显著声明：所有修改与新增内容的清单及设计动机详见
+docs/EXT-CHANGES.md 与 docs/DESIGN.md，均以 Apache License 2.0 发布。

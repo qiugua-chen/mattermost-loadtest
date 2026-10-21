@@ -11,7 +11,6 @@
 | S03 群聊 | `config-group-1200.json` | `simplecontroller-group.json` | `LT_GROUP_SIZE` 确定性分组群聊（默认 4 人/组） |
 | S03B 频道群发 | `config-channel-group-1200.json` | `simplecontroller-channel-group.json` | 单频道 N 发 M 收，验证广播放大；由开始信号文件门控齐发 |
 | 消息通用 | `config-message-1200.json` | `simplecontroller-message.json` | 通用 CreatePost 消息压测基线 |
-| 群聊（旧版配对） | — | `controller-group.json` | 早期群聊控制器参数，保留作对照 |
 
 ## 与冒烟配置的关键差异
 

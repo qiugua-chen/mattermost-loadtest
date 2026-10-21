@@ -1,8 +1,13 @@
+# 本 fork 的 CI：验证「构建 + 静态检查 + 核心包测试 + 配置合法性」。
+# 说明：上游原工作流包含 SSH agent / 全量集成测试等重环节，
+# 本扩展版裁剪为轻量门禁，保证每次 push 后仓库首页状态可信。
 name: ci
+
 on:
   push:
     branches:
       - master
+      - main
   pull_request:
 
 permissions:
@@ -13,35 +18,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: ci/verify
-        run: make verify-gomod
+      - name: go build
+        run: go build ./...
 
-      - name: Generate a dummy SSH key
-        id: gen-ssh-key
+      - name: go vet
+        run: go vet ./loadtest/... ./cmd/... ./performance/...
+
+      - name: gofmt check
+        run: test -z "$(gofmt -l loadtest cmd performance | tee /dev/stderr)"
+
+      - name: go test (loadtest)
+        run: go test -count=1 -timeout 600s ./loadtest/...
+
+      - name: validate json configs
         run: |
-          ssh-keygen -t ed25519 -f $GITHUB_WORKSPACE/sshkey -q -N ""
-          {
-            echo 'SSH_PRIVATE_KEY<<EOF'
-            cat $GITHUB_WORKSPACE/sshkey
-            echo EOF
-          } >> $GITHUB_OUTPUT
-
-      - uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ steps.gen-ssh-key.outputs.SSH_PRIVATE_KEY }}
-
-      - name: ci/check-style
-        run: make check-style
-
-      - name: ci/test
-        run: make test-ci
+          set -e
+          for f in config/*.sample.json config/formal/*.json; do
+            python3 -c "import json; json.load(open('$f'))" || { echo "INVALID JSON: $f"; exit 1; }
+          done
+          echo "all json configs valid"

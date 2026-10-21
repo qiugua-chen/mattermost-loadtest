@@ -18,7 +18,7 @@ import (
 // SimpleController is a very basic implementation of a controller.
 // Currently, it just performs a pre-defined set of actions in a loop.
 type SimpleController struct {
-	groupChannelId     string          // 群聊频道缓存（预留字段）
+	groupChannelId     string // 群聊频道缓存（预留字段）
 	id                 int
 	user               user.User
 	status             chan<- control.UserStatus
@@ -189,8 +189,8 @@ func (c *SimpleController) sendStopStatus() {
 func (c *SimpleController) createActions(definitions []actionDefinition) error {
 	var actions []*UserAction
 	c.actionMap = map[string]control.UserAction{
-		"AddReaction":            control.AddReaction,
-		"CreateDirectChannel":    control.CreateDirectChannel,
+		"AddReaction":         control.AddReaction,
+		"CreateDirectChannel": control.CreateDirectChannel,
 		// 以下为扩展动作（二开新增），在 Controller 配置 JSON 的 actions 里按名引用：
 		"CreateDirectPost":       c.createDirectPost,       // S02 单聊：确定性配对发私信
 		"CreateGroupPost":        c.createGroupPost,        // S03_GM 群聊：确定性分组群发
