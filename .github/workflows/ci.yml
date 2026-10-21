@@ -52,6 +52,6 @@ jobs:
           set -e
           tmp="$(mktemp -d)"
           cp -r config/formal "$tmp/formal"
-          ./scripts/render_formal_configs.sh >/dev/null
+          bash scripts/render_formal_configs.sh >/dev/null
           diff -r "$tmp/formal" config/formal
           echo "formal configs in sync with config-1200.tpl.json"
