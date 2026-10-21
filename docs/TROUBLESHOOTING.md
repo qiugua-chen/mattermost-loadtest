@@ -133,7 +133,7 @@ awk -F'|' '
 - 如果集中在 `/api/v4/posts`：查看消息接口 P95/P99 和服务端资源。
 - 如果同时伴随 timeout：优先查服务端响应慢或客户端超时。
 
-> 实战参考（单节点 8C16G 环境）：单聊在 150/200 并发、频道大群在 1200 在线时首次出现 499——499 的并发拐点就是该环境该链路的容量边界，排查时优先检查 Nginx worker 连接数、Keep-Alive、proxy 超时、Mattermost 连接配置与数据库连接池（详见 [BENCHMARKS.md §6](BENCHMARKS.md)）。
+> 实战参考（单节点 8C16G 环境）：单聊在 150/200 并发、频道大群在 1200 在线时首次出现 499——499 的并发拐点就是**当时测试环境**的容量边界（单机规格与机械硬盘所致，随服务端规格上移，不代表工具施压上限），排查时优先检查 Nginx worker 连接数、Keep-Alive、proxy 超时、Mattermost 连接配置与数据库连接池（详见 [BENCHMARKS.md §6](BENCHMARKS.md)）。
 
 ### 4.4 `UserRequired`
 
