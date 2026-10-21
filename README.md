@@ -82,7 +82,7 @@ go build ./...
 > **压测前请关闭或放宽服务端内置速率限制**（系统控制台 → 环境 → 速率限制），
 > 否则冒烟会被 429 打挂、数字失真（实战经验高频坑）。
 
-**1. 预置测试用户**（用户名形如 `imlt00001`，密码统一，从环境变量读取）：
+**1. 预置测试用户**（注册是登录的前置条件；用户名形如 `imlt00001`，密码统一，从环境变量读取）：
 
 ```bash
 export MM_TOKEN=<admin_token>
@@ -93,6 +93,10 @@ python3 scripts/mattermost_prepare_users.py \
   --output ./config/users/imlt-users.txt \
   --result-log ./results/prepare_users.jsonl
 ```
+
+> 冒烟的登录/单聊/群聊用例只需建号即可（扩展 action 对无团队/频道已容错）；
+> 若要跑**频道大群（S03B）**，还须执行入团入频道，完整链路见
+> [docs/SCENARIOS.md 第 3 节 S00](docs/SCENARIOS.md#3-s00-用户注册与准备前置场景)。
 
 **2. 配置连接**：复制 `config/config-smoke.sample.json` 为 `config/config-smoke.json`，
 填入 `ServerURL` / `WebSocketURL` / `AdminEmail` / `AdminPassword`，

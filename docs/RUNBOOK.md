@@ -53,6 +53,10 @@ test -n "${FORMAL_USERS:-}" && test -s "$FORMAL_USERS" &&
 test -s "$FORMAL_USERS" && wc -l "$FORMAL_USERS"
 ```
 
+> 用户尚未注册或需要补齐团队/频道成员关系时，先按
+> [SCENARIOS.md 第 3 节 S00](SCENARIOS.md#3-s00-用户注册与准备前置场景)
+> 执行建号 → 入团 → 入频道，再继续后续步骤。
+
 ### 2.3 按场景执行
 
 ```bash
