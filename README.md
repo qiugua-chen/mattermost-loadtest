@@ -25,6 +25,8 @@
 | [docs/DESIGN.md](docs/DESIGN.md) | 改造设计动机：上游工具的 6 个痛点与本扩展的解法 | 想理解"为什么有这个 fork" |
 | [docs/SCENARIOS.md](docs/SCENARIOS.md) | 四类核心场景（登录/单聊/GM/频道大群）执行手册 | 正式执行压测前 |
 | [docs/METRICS.md](docs/METRICS.md) | 指标口径：五层指标、主结论边界、报告输出模板 | 看结果、写报告前 |
+| [docs/BENCHMARKS.md](docs/BENCHMARKS.md) | 单节点 8C16G 参考环境四场景实测数据、499 边界信号与瓶颈分析 | 评估容量预期、调优对比时 |
+| [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | 验收标准矩阵、消息核账口径、结果有效性判定方法论 | 设计压测方案、评审验收口径时 |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 问题排查：9+ 个典型故障模式、排查顺序、命令集 | 压测报错时 |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | 运行手册：结果文件字典、标准流程、交接注意事项 | 日常执行与交接 |
 | [monitoring/README.md](monitoring/README.md) | 三层监控模型与 nginx 链路采集启用方法 | 需要 HTTP 全链路证据时 |

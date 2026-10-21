@@ -79,6 +79,13 @@
 | `.github/workflows/ci.yml` | 轻量门禁：build → vet → gofmt → `go test ./loadtest/...` → JSON 配置校验 → formal 配置漂移检查 |
 | `.github/workflows/release.yml` | 打 `v*` 标签时交叉编译 linux/amd64+arm64 的 ltagent/ltapi 并打包发 Release（新设备免 Go 环境） |
 
+### 2.3 实战沉淀文档
+
+| 文件 | 作用 |
+|---|---|
+| `docs/BENCHMARKS.md` | 单节点 8C16G 参考环境下 S01~S03B 四场景分档实测数据、边界信号（HTTP 499 拐点）与瓶颈分析（PG COMMIT 慢/机械硬盘） |
+| `docs/METHODOLOGY.md` | IM 压测方法论：验收标准矩阵模板、压力模型推导、消息核账口径（协议重复 vs 业务重复）、结果无效判定、执行前清单 |
+
 ## 3. 新增配置样例
 
 - `config/config-smoke.sample.json`、`config/config-agent01/02.sample.json`、`config/config-login.sample.json`：连接与压测参数样例。

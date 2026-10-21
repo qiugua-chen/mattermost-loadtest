@@ -112,6 +112,8 @@ receiver-latency-summary.txt
 scripts/summarize_receiver_latency.sh "$RUN_DIR/receiver-latency.csv"
 ```
 
+> 实战参考（单节点 8C16G 环境，详见 [BENCHMARKS.md](BENCHMARKS.md)）：频道大群 500 在线/40 人发送时，接口 P95 266ms、接收延迟 P95 321ms——接收延迟与接口耗时同量级属正常；若接收延迟显著大于接口耗时（如数倍），应怀疑 WS 推送链路。
+
 ### 4.6 499 / timeout / loadtest_errors
 
 | 指标 | 含义 |
