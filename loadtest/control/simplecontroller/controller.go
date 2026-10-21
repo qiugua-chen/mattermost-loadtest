@@ -20,7 +20,6 @@ import (
 type SimpleController struct {
 	groupChannelId     string          // 群聊频道缓存（预留字段）
 	id                 int
-	id                 int
 	user               user.User
 	status             chan<- control.UserStatus
 	rate               float64
