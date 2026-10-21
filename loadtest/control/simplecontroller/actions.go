@@ -10,7 +10,6 @@ import (
 	"math"
 	"os"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -250,16 +249,12 @@ func (c *SimpleController) createGroupPost(u user.User) control.UserActionRespon
 
 	// 用户编号按 1 开始分组：
 	// 3人群：00001/00002/00003，00004/00005/00006 ...
-	groupStart := ((userNo-1)/groupSize)*groupSize + 1
-
 	otherUserIds := make([]string, 0, groupSize-1)
-	for i := 0; i < groupSize; i++ {
-		memberNo := groupStart + i
-		memberUsername := fmt.Sprintf("%s%05d", prefix, memberNo)
-
-		if memberUsername == username {
+	for _, memberNo := range groupMemberNumbers(userNo, groupSize) {
+		if memberNo == userNo {
 			continue
 		}
+		memberUsername := fmt.Sprintf("%s%05d", prefix, memberNo)
 
 		members, err := u.GetUsersByUsernames([]string{memberUsername})
 		if err != nil {
@@ -308,37 +303,10 @@ func (c *SimpleController) createGroupPost(u user.User) control.UserActionRespon
 // 消息体内嵌 send_unix_nano 供端到端延迟计算。
 func (c *SimpleController) createDirectPost(u user.User) control.UserActionResponse {
 	if c.directChannelID == "" {
-		username := u.Store().Username()
-		suffix := user.TestUserSuffixRegexp.FindString(username)
-		if suffix == "" {
-			return control.UserActionResponse{
-				Err: control.NewUserError(
-					fmt.Errorf("direct message pairing: username %q has no numeric suffix", username),
-				),
-			}
+		partnerUsername, err := directPartnerUsername(u.Store().Username())
+		if err != nil {
+			return control.UserActionResponse{Err: control.NewUserError(err)}
 		}
-
-		userNumber, err := strconv.Atoi(suffix)
-		if err != nil || userNumber < 1 {
-			return control.UserActionResponse{
-				Err: control.NewUserError(
-					fmt.Errorf("direct message pairing: invalid suffix %q in username %q", suffix, username),
-				),
-			}
-		}
-
-		partnerNumber := userNumber + 1
-		if userNumber%2 == 0 {
-			partnerNumber = userNumber - 1
-		}
-
-		prefix := strings.TrimSuffix(username, suffix)
-		partnerUsername := fmt.Sprintf(
-			"%s%0*d",
-			prefix,
-			len(suffix),
-			partnerNumber,
-		)
 
 		partnerIDs, err := u.GetUsersByUsernames([]string{partnerUsername})
 		if err != nil {
@@ -559,23 +527,8 @@ func (c *SimpleController) recordReceiverLatency(event *model.WebSocketEvent) {
 		return
 	}
 
-	if !strings.Contains(post.Message, "send_unix_nano=") {
-		return
-	}
-
-	var sendUnixNano int64
-	for _, part := range strings.Fields(post.Message) {
-		if strings.HasPrefix(part, "send_unix_nano=") {
-			value := strings.TrimPrefix(part, "send_unix_nano=")
-			parsed, err := strconv.ParseInt(value, 10, 64)
-			if err == nil {
-				sendUnixNano = parsed
-			}
-			break
-		}
-	}
-
-	if sendUnixNano <= 0 {
+	sendUnixNano, ok := parseSendUnixNano(post.Message)
+	if !ok {
 		return
 	}
 

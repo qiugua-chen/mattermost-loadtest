@@ -2,6 +2,11 @@
 
 本目录为正式压测场景的参数基线（来源于一次完整的 1200 用户 IM 性能测试实践，路径参数已改为相对路径）。每个场景由「主配置 + 控制器配置」两个文件成对组成。
 
+> **单一事实来源**：五份 `config-*-1200.json` 主配置仅 `UserControllerConfiguration.Type` 一处不同
+> （登录=`noop`，其余=`simple`），由模板 `config-1200.tpl.json` 经
+> `bash scripts/render_formal_configs.sh` 渲染生成。
+> 调整公共参数请改模板后重新渲染；CI 会校验渲染产物与仓库内文件一致（防漂移）。
+
 ## 场景对照表
 
 | 场景 | 主配置 | 控制器配置 | 说明 |

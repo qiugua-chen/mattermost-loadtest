@@ -177,6 +177,22 @@ CONTRIBUTING.md                    # 二开约定与贡献指南
 
 本套件采用**三层监控模型**，压测数据从三个层面交叉核对，任何一层异常都能被发现：
 
+```mermaid
+flowchart LR
+    subgraph LT[压测机（本仓库部署）]
+        direction TB
+        FN["loadtest-stage-functions.sh<br/>就绪门控 · 采集编排"] --> AG
+        AG["ltagent × N<br/>内嵌 /metrics :4001"] -->|HTTP/WS 压测流量| NX["nginx-perf 反代 :18065<br/>全链路 access log（链路层）"]
+        CL["collect_ltagent_metrics.sh"] -->|周期抓取 /metrics| AG
+    end
+    NX -->|转发| MM[("被测 Mattermost<br/>:8065")]
+    MM -.->|WS posted 事件| AG
+    AG -->|"① 客户端层：时序 CSV"| RS["results/runs/&lt;run&gt;/"]
+    NX -->|"② 链路层：perf access.log"| RS
+    AG -->|"③ 业务层：receiver-latency.csv<br/>（send_unix_nano 端到端延迟）"| RS
+    PM["Prometheus / Grafana<br/>（外部监控栈，可选）"] -.->|抓取| AG
+```
+
 | 层 | 数据源 | 采集方式 | 回答的问题 |
 |---|---|---|---|
 | **客户端层** | ltagent 内嵌 `/metrics` + `/status` | `scripts/collect_ltagent_metrics.sh` 周期抓取为时序 CSV | 压测侧发出了多少请求？WS 连接是否达标？有没有丢事件？ |

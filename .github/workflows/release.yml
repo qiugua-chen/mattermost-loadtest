@@ -1,0 +1,49 @@
+# Release 工作流：打 v* 标签时交叉编译 Linux 二进制并发布 Release。
+# 产物为开箱包：ltagent/ltapi 二进制 + 执行脚本 + 脱敏配置样例 + 监控子系统 + 文档，
+# 新设备无需安装 Go 环境即可按 README 冒烟。
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: build and package (linux amd64/arm64)
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME}"
+          for arch in amd64 arm64; do
+            pkg="mattermost-loadtest_${VERSION}_linux_${arch}"
+            mkdir -p "dist/$pkg/bin"
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -mod=readonly -trimpath \
+              -o "dist/$pkg/bin/ltagent" ./cmd/ltagent
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -mod=readonly -trimpath \
+              -o "dist/$pkg/bin/ltapi" ./cmd/ltapi
+            cp loadtest-stage-functions.sh "dist/$pkg/"
+            cp -r scripts config monitoring docs "dist/$pkg/"
+            cp README.md LICENSE.txt NOTICE CONTRIBUTING.md "dist/$pkg/"
+            tar -czf "dist/$pkg.tar.gz" -C dist "$pkg"
+          done
+          ls -lh dist/*.tar.gz
+
+      - name: publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.tar.gz
+          generate_release_notes: true

@@ -42,6 +42,16 @@ jobs:
         run: |
           set -e
           for f in config/*.sample.json config/formal/*.json; do
+            case "$f" in *.tpl.json) continue;; esac
             python3 -c "import json; json.load(open('$f'))" || { echo "INVALID JSON: $f"; exit 1; }
           done
           echo "all json configs valid"
+
+      - name: formal configs drift check
+        run: |
+          set -e
+          tmp="$(mktemp -d)"
+          cp -r config/formal "$tmp/formal"
+          ./scripts/render_formal_configs.sh >/dev/null
+          diff -r "$tmp/formal" config/formal
+          echo "formal configs in sync with config-1200.tpl.json"

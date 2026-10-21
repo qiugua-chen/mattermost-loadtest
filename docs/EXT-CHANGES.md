@@ -63,6 +63,21 @@
 | `scripts/summarize_message_metrics.sh` | 消息收发指标汇总 |
 | `scripts/summarize_receiver_latency.sh` | 接收延迟分布（P50/P95/P99/Max）汇总 |
 | `scripts/S02_direct_window_report.py` | 单聊场景按时间窗口的收发对齐报告 |
+| `scripts/render_formal_configs.sh` | 由 `config/formal/config-1200.tpl.json` 单一模板渲染五份正式场景主配置（防漂移，CI 校验） |
+
+### 2.1 新增纯函数与单测
+
+| 文件 | 作用 |
+|---|---|
+| `loadtest/control/simplecontroller/ext_helpers.go` | 从场景动作中提取的纯函数：`groupMemberNumbers`（确定性分组）、`directPartnerUsername`（确定性配对）、`parseSendUnixNano`（延迟标记解析） |
+| `loadtest/control/simplecontroller/ext_helpers_test.go` | 上述纯函数的 table-driven 单测（无服务端依赖，CI 直接运行） |
+
+### 2.2 工程化（CI/CD）
+
+| 文件 | 作用 |
+|---|---|
+| `.github/workflows/ci.yml` | 轻量门禁：build → vet → gofmt → `go test ./loadtest/...` → JSON 配置校验 → formal 配置漂移检查 |
+| `.github/workflows/release.yml` | 打 `v*` 标签时交叉编译 linux/amd64+arm64 的 ltagent/ltapi 并打包发 Release（新设备免 Go 环境） |
 
 ## 3. 新增配置样例
 
