@@ -23,8 +23,8 @@ func TestGroupUserNumber(t *testing.T) {
 		{"imlt00001", 1, true},
 		{"ltuser00042", 42, true},
 		{"imlts0112000", 12000, true},
-		{"00007", 7, true},   // 纯数字用户名也允许
-		{"abc", 0, false},    // 长度不足 5
+		{"00007", 7, true}, // 纯数字用户名也允许
+		{"abc", 0, false},  // 长度不足 5
 		{"user123", 0, false},
 		{"user1234x", 0, false}, // 末 5 位非纯数字
 		{"", 0, false},
@@ -94,7 +94,7 @@ func TestDirectPartnerUsername(t *testing.T) {
 		{"imlt00002", "imlt00001"}, // 偶数 -> -1
 		{"imlt00009", "imlt00010"},
 		{"imlt00010", "imlt00009"},
-		{"ltuser1", "ltuser2"},     // 位宽不固定时按原后缀宽度补齐
+		{"ltuser1", "ltuser2"}, // 位宽不固定时按原后缀宽度补齐
 		{"imlts0111999", "imlts0112000"},
 	}
 	for _, c := range cases {
